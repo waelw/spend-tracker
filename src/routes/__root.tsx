@@ -1,0 +1,151 @@
+import {
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+  Outlet,
+  Link,
+} from "@tanstack/react-router"
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
+import { TanStackDevtools } from "@tanstack/react-devtools"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { ClerkProvider, SignedIn, SignedOut, UserButton, SignInButton, useAuth } from "@clerk/tanstack-react-start"
+import { ConvexProviderWithClerk } from "convex/react-clerk"
+
+import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { Button } from "@/components/ui/button"
+import type { RouterContext } from "@/router"
+
+import appCss from "../styles.css?url"
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      {
+        charSet: "utf-8",
+      },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1",
+      },
+      {
+        title: "Spend Tracker",
+      },
+    ],
+    links: [
+      {
+        rel: "stylesheet",
+        href: appCss,
+      },
+    ],
+  }),
+  component: RootComponent,
+})
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext()
+
+  return (
+    <ClerkProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConvexClientProvider>
+          <RootDocument>
+            <Outlet />
+          </RootDocument>
+        </ConvexClientProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
+  )
+}
+
+function ConvexClientProvider({ children }: { children: React.ReactNode }) {
+  const { convexClient } = Route.useRouteContext()
+  const auth = useAuth()
+
+  // Debug logging
+  console.log("Clerk auth state:", {
+    isLoaded: auth.isLoaded,
+    isSignedIn: auth.isSignedIn,
+    userId: auth.userId,
+  })
+
+  // Test getting the token directly
+  if (auth.isLoaded && auth.isSignedIn) {
+    auth.getToken({ template: "convex" }).then((token) => {
+      console.log("Convex token:", token ? "Token received" : "No token")
+    }).catch((err) => {
+      console.error("Error getting token:", err)
+    })
+  }
+
+  return (
+    <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+      {children}
+    </ConvexProviderWithClerk>
+  )
+}
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <ThemeProvider defaultTheme="system" storageKey="spend-tracker-theme">
+          <div className="min-h-screen bg-background">
+            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="container mx-auto flex h-14 items-center">
+                <div className="mr-4 flex">
+                  <Link to="/" className="mr-6 flex items-center space-x-2">
+                    <span className="font-bold">Spend Tracker</span>
+                  </Link>
+                  <nav className="flex items-center space-x-6 text-sm font-medium">
+                    <SignedIn>
+                      <Link
+                        to="/"
+                        className="transition-colors hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        to="/budgets/new"
+                        className="transition-colors hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
+                      >
+                        New Budget
+                      </Link>
+                    </SignedIn>
+                  </nav>
+                </div>
+                <div className="flex flex-1 items-center justify-end space-x-2">
+                  <ThemeToggle />
+                  <SignedIn>
+                    <UserButton afterSignOutUrl="/" />
+                  </SignedIn>
+                  <SignedOut>
+                    <SignInButton mode="modal">
+                      <Button variant="outline">Sign In</Button>
+                    </SignInButton>
+                  </SignedOut>
+                </div>
+              </div>
+            </header>
+            <main className="container mx-auto py-6">{children}</main>
+          </div>
+          <TanStackDevtools
+            config={{
+              position: "bottom-right",
+            }}
+            plugins={[
+              {
+                name: "Tanstack Router",
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+          <Scripts />
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
