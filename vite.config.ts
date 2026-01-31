@@ -6,6 +6,7 @@ import viteTsConfigPaths from 'vite-tsconfig-paths'
 import { fileURLToPath, URL } from 'url'
 import { nitro } from 'nitro/vite'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 const config = defineConfig({
   resolve: {
@@ -24,6 +25,41 @@ const config = defineConfig({
 
     tanstackStart(),
     viteReact(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png', 'icon.svg'],
+      manifest: false, // Use the existing manifest.json in public folder
+      workbox: {
+        globDirectory: '.output/public',
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.clerk\.accounts\.dev\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'clerk-auth-cache',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60, // 1 hour
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*\.convex\.cloud\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'convex-api-cache',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 5, // 5 minutes
+              },
+            },
+          },
+        ],
+      },
+    }),
   ],
 })
 

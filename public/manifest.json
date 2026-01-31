@@ -1,6 +1,7 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
+  "short_name": "Spend Tracker",
+  "name": "Spend Tracker - Budget & Expense Manager",
+  "description": "Track your budgets, expenses, and spending limits across multiple currencies",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,35 @@
       "type": "image/x-icon"
     },
     {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#0f172a",
+  "background_color": "#ffffff",
+  "categories": ["finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "New Budget",
+      "short_name": "New Budget",
+      "url": "/budgets/new",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
 }

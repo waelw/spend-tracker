@@ -1,290 +1,294 @@
-Welcome to your new TanStack app! 
+# Spend Tracker
 
-# Getting Started
+A modern, full-stack budget tracking application built with TanStack Start, Convex, and Clerk. Track your budgets across multiple currencies, set daily spending limits, and manage expenses with real-time updates.
 
-To run this application:
+![Spend Tracker](https://img.shields.io/badge/Status-Active-success)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)
+![TanStack Start](https://img.shields.io/badge/TanStack%20Start-RC-orange)
+![Convex](https://img.shields.io/badge/Convex-1.31-green)
 
-```bash
-npm install
-npm run dev
+## Features
+
+### Budget Management
+- **Create budgets** with custom date ranges (start and end dates)
+- **Set total budget amount** in your preferred main currency
+- **Name your budgets** for easy organization
+- **View all budgets** in a beautiful dashboard with quick stats
+
+### Multi-Currency Support
+- **Add multiple currencies** to each budget
+- **Set custom exchange rates** between currencies for each budget
+- **Track expenses** in any currency within a budget
+- **Automatic conversion** to main currency for spending calculations
+
+### Daily Spending Limits
+- **Automatic daily limit calculation** based on budget duration and total amount
+- **Real-time tracking** of today's spending vs. daily limit
+- **Visual indicators** showing remaining budget for the day
+- **Daily breakdown** showing spending patterns over time
+
+### Expense & Income Tracking
+- **Add expenses** with amount, currency, date, and optional description
+- **Track income** to adjust your available budget
+- **View expense history** organized by date
+- **Delete expenses** and income entries as needed
+
+### User Experience
+- **Dark mode support** with seamless theme switching
+- **Responsive design** that works on all devices
+- **Real-time updates** powered by Convex's reactive queries
+- **Beautiful UI** built with shadcn/ui components
+- **Secure authentication** via Clerk
+
+## Tech Stack
+
+### Frontend
+- **[TanStack Start](https://tanstack.com/start)** - Full-stack React framework with SSR
+- **[TanStack Router](https://tanstack.com/router)** - Type-safe routing
+- **[TanStack Query](https://tanstack.com/query)** - Data fetching and state management
+- **[React](https://react.dev)** - UI library
+- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first CSS framework
+- **[shadcn/ui](https://ui.shadcn.com)** - High-quality component library
+- **[date-fns](https://date-fns.org)** - Date utility library
+- **[Recharts](https://recharts.org)** - Chart library for visualizations
+
+### Backend & Infrastructure
+- **[Convex](https://convex.dev)** - Backend-as-a-Service with real-time database
+- **[Clerk](https://clerk.com)** - Authentication and user management
+- **[Vite](https://vitejs.dev)** - Build tool and dev server
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- A [Convex](https://convex.dev) account (free tier available)
+- A [Clerk](https://clerk.com) account (free tier available)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd spend-tracker
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up Convex**
+   ```bash
+   npx convex dev
+   ```
+   This will:
+   - Prompt you to log in or create a Convex account
+   - Create a new Convex project
+   - Generate the `convex/` folder with backend functions
+   - Save your deployment URL to `.env`
+
+4. **Set up Clerk**
+   - Sign up at [clerk.com](https://clerk.com)
+   - Create a new application
+   - In the Clerk Dashboard, go to **JWT Templates**
+   - Create a new template and select **Convex**
+   - **Important:** The JWT token must be named `convex` (do not rename it)
+   - Copy the **Issuer URL** (your Frontend API URL)
+   - In the Convex Dashboard, go to your deployment settings
+   - Add an environment variable: `CLERK_JWT_ISSUER_DOMAIN` = your Issuer URL
+   - Copy your **Publishable Key** from Clerk Dashboard → API Keys
+
+5. **Configure environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   # Convex (automatically added by `npx convex dev`)
+   VITE_CONVEX_URL=your_convex_deployment_url
+   
+   # Clerk
+   VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+   ```
+
+   Or copy from the example:
+   ```bash
+   cp .env.example .env
+   ```
+   Then fill in your values.
+
+6. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+   The app will be available at `http://localhost:3000`
+
+## Project Structure
+
+```
+spend-tracker/
+├── convex/                 # Convex backend functions
+│   ├── _generated/        # Auto-generated types
+│   ├── auth.config.ts     # Clerk authentication config
+│   ├── schema.ts          # Database schema definition
+│   ├── budgets.ts         # Budget CRUD operations
+│   ├── budgetCurrencies.ts # Currency & exchange rate management
+│   ├── expenses.ts        # Expense tracking
+│   └── income.ts          # Income tracking
+├── src/
+│   ├── components/        # React components
+│   │   ├── ui/           # shadcn/ui components
+│   │   ├── theme-provider.tsx
+│   │   └── theme-toggle.tsx
+│   ├── routes/           # TanStack Router routes
+│   │   ├── __root.tsx    # Root layout
+│   │   ├── index.tsx     # Dashboard
+│   │   └── budgets/      # Budget routes
+│   ├── lib/              # Utility functions
+│   ├── router.tsx        # Router configuration
+│   └── styles.css        # Global styles
+├── public/               # Static assets
+├── app.config.ts        # App configuration
+├── vite.config.ts       # Vite configuration
+└── package.json         # Dependencies
 ```
 
-# Building For Production
+## Usage
 
-To build this application for production:
+### Creating a Budget
+
+1. Click **"New Budget"** on the dashboard
+2. Enter:
+   - Budget name (optional)
+   - Start date
+   - End date
+   - Total amount
+   - Main currency (e.g., USD, EUR, GBP)
+3. Click **"Create Budget"**
+
+### Adding Currencies
+
+1. Open a budget detail page
+2. Go to the **Currencies** tab
+3. Click **"Add Currency"**
+4. Enter:
+   - Currency code (e.g., EUR, JPY)
+   - Exchange rate to main currency (e.g., 1 EUR = 1.1 USD means rate is 1.1)
+5. Click **"Add"**
+
+### Adding Expenses
+
+1. Open a budget detail page
+2. Go to the **Expenses** tab
+3. Click **"Add Expense"**
+4. Enter:
+   - Amount
+   - Currency (must be main currency or one of the added currencies)
+   - Date (defaults to today)
+   - Description (optional)
+5. Click **"Add"**
+
+### Viewing Daily Limits
+
+- The dashboard shows **Today's Limit** and **Remaining Today** for each budget
+- The budget detail page shows detailed daily breakdown with charts
+- Daily limit = Total Budget ÷ Number of Days in Budget Period
+
+## Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run test` - Run tests
+
+### Convex Development
+
+Keep `npx convex dev` running in a separate terminal during development. It will:
+- Watch for changes in `convex/` folder
+- Sync functions to your Convex deployment
+- Regenerate TypeScript types
+
+### Type Safety
+
+The project uses TypeScript with end-to-end type safety:
+- Convex generates types from your schema
+- Import types from `convex/_generated/api` and `convex/_generated/dataModel`
+- TanStack Router provides type-safe routing
+
+## Deployment
+
+### Building for Production
 
 ```bash
 npm run build
 ```
 
-## Testing
+### Environment Variables
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+Make sure to set these environment variables in your hosting platform:
 
-```bash
-npm run test
-```
+- `VITE_CONVEX_URL` - Your Convex deployment URL
+- `VITE_CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key
 
-## Styling
+### Convex Production Deployment
 
-This project uses CSS for styling.
+1. In Convex Dashboard, create a production deployment
+2. Set `CLERK_JWT_ISSUER_DOMAIN` for production (use your production Clerk issuer URL)
+3. Deploy:
+   ```bash
+   npx convex deploy --prod
+   ```
 
+### Clerk Production
 
+Update your Clerk application settings:
+- Add your production domain to allowed origins
+- Use production API keys (`pk_live_...` instead of `pk_test_...`)
 
+## Database Schema
 
-## Routing
-This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
+### Budgets
+- `userId` - Clerk user ID
+- `name` - Optional budget name
+- `startDate` - Start date timestamp (ms)
+- `endDate` - End date timestamp (ms)
+- `totalAmount` - Total budget amount
+- `mainCurrency` - Main currency code
 
-### Adding A Route
+### Budget Currencies
+- `budgetId` - Reference to budget
+- `currencyCode` - Currency code (e.g., "EUR")
+- `rateToMain` - Exchange rate to main currency
 
-To add a new route to your application just add another a new file in the `./src/routes` directory.
+### Expenses
+- `budgetId` - Reference to budget
+- `userId` - Clerk user ID
+- `amount` - Expense amount
+- `currencyCode` - Currency of expense
+- `date` - Date timestamp (ms)
+- `description` - Optional description
 
-TanStack will automatically generate the content of the route file for you.
+### Income
+- `budgetId` - Reference to budget
+- `userId` - Clerk user ID
+- `amount` - Income amount
+- `currencyCode` - Currency of income
+- `date` - Date timestamp (ms)
+- `description` - Optional description
 
-Now that you have two routes you can use a `Link` component to navigate between them.
+## Contributing
 
-### Adding Links
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
+## License
 
-```tsx
-import { Link } from "@tanstack/react-router";
-```
+This project is private and for personal use.
 
-Then anywhere in your JSX you can use it like so:
+## Acknowledgments
 
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-import { Link } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
-})
-```
-
-The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
-});
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-### React-Query
-
-React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
-
-First add your dependencies:
-
-```bash
-npm install @tanstack/react-query @tanstack/react-query-devtools
-```
-
-Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
-
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// ...
-
-const queryClient = new QueryClient();
-
-// ...
-
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
-}
-```
-
-You can also add TanStack Query Devtools to the root route (optional).
-
-```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
-});
-```
-
-Now you can use `useQuery` to fetch your data.
-
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-import "./App.css";
-
-function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
-  });
-
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export default App;
-```
-
-You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
-
-## State Management
-
-Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
-
-First you need to add TanStack Store as a dependency:
-
-```bash
-npm install @tanstack/store
-```
-
-Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-function App() {
-  const count = useStore(countStore);
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-    </div>
-  );
-}
-
-export default App;
-```
-
-One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
-
-Let's check this out by doubling the count using derived state.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-const doubledStore = new Derived({
-  fn: () => countStore.state * 2,
-  deps: [countStore],
-});
-doubledStore.mount();
-
-function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
-
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-      <div>Doubled - {doubledCount}</div>
-    </div>
-  );
-}
-
-export default App;
-```
-
-We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
-
-Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
-
-You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+- Built with [TanStack Start](https://tanstack.com/start)
+- Backend powered by [Convex](https://convex.dev)
+- Authentication by [Clerk](https://clerk.com)
+- UI components from [shadcn/ui](https://ui.shadcn.com)

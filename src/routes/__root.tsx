@@ -26,16 +26,65 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
       },
       {
         title: "Spend Tracker",
+      },
+      {
+        name: "description",
+        content: "Track your budgets, expenses, and spending limits across multiple currencies",
+      },
+      {
+        name: "theme-color",
+        content: "#0f172a",
+      },
+      {
+        name: "apple-mobile-web-app-capable",
+        content: "yes",
+      },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "black-translucent",
+      },
+      {
+        name: "apple-mobile-web-app-title",
+        content: "Spend Tracker",
+      },
+      {
+        name: "mobile-web-app-capable",
+        content: "yes",
       },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/logo192.png",
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "192x192",
+        href: "/logo192.png",
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "512x512",
+        href: "/logo512.png",
+      },
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/icon.svg",
       },
     ],
   }),
