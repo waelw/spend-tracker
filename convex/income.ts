@@ -57,6 +57,26 @@ export const add = mutation({
     if (!validCurrencies.includes(args.currencyCode)) {
       throw new Error("Invalid currency for this budget")
     }
+
+    // Add to the asset for this currency
+    const asset = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId_currencyCode", (q) =>
+        q.eq("budgetId", args.budgetId).eq("currencyCode", args.currencyCode)
+      )
+      .first()
+
+    if (asset) {
+      await ctx.db.patch(asset._id, { amount: asset.amount + args.amount })
+    } else {
+      // Create new asset if it doesn't exist
+      await ctx.db.insert("budgetAssets", {
+        budgetId: args.budgetId,
+        currencyCode: args.currencyCode,
+        amount: args.amount,
+      })
+    }
+
     return await ctx.db.insert("income", {
       budgetId: args.budgetId,
       userId: identity.subject,
@@ -79,6 +99,19 @@ export const remove = mutation({
     if (!income || income.userId !== identity.subject) {
       throw new Error("Income not found")
     }
+
+    // Subtract the amount from the asset
+    const asset = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId_currencyCode", (q) =>
+        q.eq("budgetId", income.budgetId).eq("currencyCode", income.currencyCode)
+      )
+      .first()
+
+    if (asset) {
+      await ctx.db.patch(asset._id, { amount: asset.amount - income.amount })
+    }
+
     await ctx.db.delete(args.id)
   },
 })

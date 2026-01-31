@@ -7,7 +7,7 @@ export default defineSchema({
     name: v.optional(v.string()),
     startDate: v.number(), // timestamp ms
     endDate: v.number(), // timestamp ms
-    totalAmount: v.number(),
+    totalAmount: v.optional(v.number()), // Legacy field - now computed from budgetAssets
     mainCurrency: v.string(),
   }).index("by_userId", ["userId"]),
 
@@ -16,6 +16,28 @@ export default defineSchema({
     currencyCode: v.string(),
     rateToMain: v.number(), // 1 unit of this currency = rateToMain units of main currency
   }).index("by_budgetId", ["budgetId"]),
+
+  budgetAssets: defineTable({
+    budgetId: v.id("budgets"),
+    currencyCode: v.string(),
+    amount: v.number(), // Current balance in this currency
+  })
+    .index("by_budgetId", ["budgetId"])
+    .index("by_budgetId_currencyCode", ["budgetId", "currencyCode"]),
+
+  assetTransfers: defineTable({
+    budgetId: v.id("budgets"),
+    userId: v.string(),
+    fromCurrency: v.string(),
+    toCurrency: v.string(),
+    fromAmount: v.number(),
+    toAmount: v.number(),
+    rateUsed: v.number(),
+    date: v.number(), // timestamp ms
+    description: v.optional(v.string()),
+  })
+    .index("by_budgetId", ["budgetId"])
+    .index("by_budgetId_date", ["budgetId", "date"]),
 
   expenses: defineTable({
     budgetId: v.id("budgets"),

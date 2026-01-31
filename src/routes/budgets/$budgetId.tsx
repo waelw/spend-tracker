@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { useState, useRef } from "react"
 import { format } from "date-fns"
-import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Parse date string as local time (not UTC)
@@ -90,6 +90,12 @@ function BudgetDetail() {
   const dailyLimit = useQuery(api.budgets.getDailyLimit, { budgetId: budgetId as Id<"budgets">, clientToday })
   const dailyBreakdown = useQuery(api.budgets.getDailyBreakdown, { budgetId: budgetId as Id<"budgets">, clientToday })
   const currencies = useQuery(api.budgetCurrencies.listByBudget, {
+    budgetId: budgetId as Id<"budgets">,
+  })
+  const assets = useQuery(api.budgetAssets.listByBudget, {
+    budgetId: budgetId as Id<"budgets">,
+  })
+  const transfers = useQuery(api.budgetAssets.listTransfers, {
     budgetId: budgetId as Id<"budgets">,
   })
   const expenses = useQuery(api.expenses.listByBudget, { budgetId: budgetId as Id<"budgets"> })
@@ -289,12 +295,12 @@ function BudgetDetail() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Budget Progress</span>
-                  <span>{((dailyLimit.totalSpent / budget.totalAmount) * 100).toFixed(1)}% spent</span>
+                  <span>{((dailyLimit.totalSpent / dailyLimit.effectiveTotalBudget) * 100).toFixed(1)}% spent</span>
                 </div>
                 <div className="h-3 bg-secondary rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${Math.min(100, (dailyLimit.totalSpent / budget.totalAmount) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (dailyLimit.totalSpent / dailyLimit.effectiveTotalBudget) * 100)}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -305,6 +311,99 @@ function BudgetDetail() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Currency Assets */}
+      {assets && currencies && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Currency Assets</CardTitle>
+                  <CardDescription>Your available balance in each currency</CardDescription>
+                </div>
+              </div>
+              {currencies.length > 1 && (
+                <TransferDialog
+                  budgetId={budgetId as Id<"budgets">}
+                  assets={assets}
+                  currencies={currencies}
+                />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {assets.map((asset) => {
+                const currency = currencies.find((c) => c.currencyCode === asset.currencyCode)
+                const rateToMain = currency?.rateToMain ?? 1
+                const valueInMain = asset.amount * rateToMain
+                const isMainCurrency = asset.currencyCode === budget.mainCurrency
+
+                return (
+                  <div
+                    key={asset._id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      isMainCurrency ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="font-medium">
+                        {asset.currencyCode}
+                        {isMainCurrency && (
+                          <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                            Main
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">
+                        {formatCurrency(asset.amount, asset.currencyCode)}
+                      </div>
+                      {!isMainCurrency && (
+                        <div className="text-xs text-muted-foreground">
+                          = {formatCurrency(valueInMain, budget.mainCurrency)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {assets.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">
+                  No assets yet. Add currencies and set initial amounts.
+                </p>
+              )}
+            </div>
+
+            {/* Transfer History */}
+            {transfers && transfers.length > 0 && (
+              <div className="mt-6 pt-4 border-t">
+                <h4 className="text-sm font-medium mb-3">Recent Transfers</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {transfers.slice(0, 5).map((transfer) => (
+                    <div
+                      key={transfer._id}
+                      className="flex items-center justify-between text-sm p-2 rounded bg-muted/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{formatCurrency(transfer.fromAmount, transfer.fromCurrency)}</span>
+                        <ArrowRightLeft className="h-3 w-3 text-muted-foreground" />
+                        <span>{formatCurrency(transfer.toAmount, transfer.toCurrency)}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(transfer.date), "MMM d")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Budget Balance Chart */}
@@ -615,6 +714,7 @@ function BudgetDetail() {
             <AddExpenseForm
               budgetId={budgetId as Id<"budgets">}
               currencies={currencies || []}
+              assets={assets || []}
             />
           </CardContent>
         </Card>
@@ -1015,9 +1115,11 @@ function SwitchMainCurrencyForm({
 function AddExpenseForm({
   budgetId,
   currencies,
+  assets,
 }: {
   budgetId: Id<"budgets">
   currencies: { currencyCode: string }[]
+  assets: { currencyCode: string; amount: number }[]
 }) {
   const [amount, setAmount] = useState("")
   const [currencyCode, setCurrencyCode] = useState(currencies[0]?.currencyCode || "")
@@ -1028,6 +1130,10 @@ function AddExpenseForm({
 
   const addExpenseMutation = useMutation(api.expenses.add)
   const today = format(new Date(), "yyyy-MM-dd")
+
+  // Get current asset balance for selected currency
+  const currentAsset = assets.find((a) => a.currencyCode === currencyCode)
+  const availableBalance = currentAsset?.amount ?? 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1094,13 +1200,19 @@ function AddExpenseForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {currencies.map((c) => (
-                <SelectItem key={c.currencyCode} value={c.currencyCode}>
-                  {c.currencyCode}
-                </SelectItem>
-              ))}
+              {currencies.map((c) => {
+                const asset = assets.find((a) => a.currencyCode === c.currencyCode)
+                return (
+                  <SelectItem key={c.currencyCode} value={c.currencyCode}>
+                    {c.currencyCode} ({formatCurrency(asset?.amount ?? 0, c.currencyCode)})
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
+          <p className={`text-xs ${availableBalance > 0 ? "text-muted-foreground" : "text-destructive"}`}>
+            Available: {formatCurrency(availableBalance, currencyCode)}
+          </p>
         </div>
       </div>
       <div className="space-y-2">
@@ -1342,5 +1454,173 @@ function IncomeRow({
         </Button>
       </TableCell>
     </TableRow>
+  )
+}
+
+function TransferDialog({
+  budgetId,
+  assets,
+  currencies,
+}: {
+  budgetId: Id<"budgets">
+  assets: { _id: Id<"budgetAssets">; currencyCode: string; amount: number }[]
+  currencies: { currencyCode: string; rateToMain: number }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [fromCurrency, setFromCurrency] = useState(assets[0]?.currencyCode || "")
+  const [toCurrency, setToCurrency] = useState(assets[1]?.currencyCode || assets[0]?.currencyCode || "")
+  const [amount, setAmount] = useState("")
+  const [isTransferring, setIsTransferring] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const transferMutation = useMutation(api.budgetAssets.transfer)
+
+  const fromAsset = assets.find((a) => a.currencyCode === fromCurrency)
+  const fromRate = currencies.find((c) => c.currencyCode === fromCurrency)?.rateToMain ?? 1
+  const toRate = currencies.find((c) => c.currencyCode === toCurrency)?.rateToMain ?? 1
+
+  const amountNum = parseFloat(amount) || 0
+  const exchangeRate = fromRate / toRate
+  const toAmount = amountNum * exchangeRate
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (fromCurrency === toCurrency) {
+      setError("Cannot transfer to the same currency")
+      return
+    }
+
+    if (amountNum <= 0) {
+      setError("Amount must be greater than 0")
+      return
+    }
+
+    if (fromAsset && amountNum > fromAsset.amount) {
+      setError(`Insufficient balance. Available: ${fromAsset.amount.toFixed(2)} ${fromCurrency}`)
+      return
+    }
+
+    setIsTransferring(true)
+    try {
+      await transferMutation({
+        budgetId,
+        fromCurrency,
+        toCurrency,
+        fromAmount: amountNum,
+      })
+      setOpen(false)
+      setAmount("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to transfer")
+    } finally {
+      setIsTransferring(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <ArrowRightLeft className="mr-2 h-4 w-4" />
+          Transfer
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Transfer Between Currencies</DialogTitle>
+          <DialogDescription>
+            Convert funds from one currency to another using the current exchange rates.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>From</Label>
+            <div className="flex gap-2">
+              <Select value={fromCurrency} onValueChange={setFromCurrency}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assets.map((a) => (
+                    <SelectItem key={a.currencyCode} value={a.currencyCode}>
+                      {a.currencyCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+            {fromAsset && (
+              <p className="text-xs text-muted-foreground">
+                Available: {formatCurrency(fromAsset.amount, fromCurrency)}
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-center">
+            <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
+          </div>
+
+          <div className="space-y-2">
+            <Label>To</Label>
+            <div className="flex gap-2">
+              <Select value={toCurrency} onValueChange={setToCurrency}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assets.map((a) => (
+                    <SelectItem key={a.currencyCode} value={a.currencyCode}>
+                      {a.currencyCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="text"
+                value={amountNum > 0 ? toAmount.toFixed(2) : ""}
+                disabled
+                placeholder="You'll receive"
+                className="flex-1 bg-muted"
+              />
+            </div>
+            {fromCurrency !== toCurrency && amountNum > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Rate: 1 {fromCurrency} = {exchangeRate.toFixed(4)} {toCurrency}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isTransferring}>
+              {isTransferring ? "Transferring..." : "Transfer"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

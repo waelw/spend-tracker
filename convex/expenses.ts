@@ -70,6 +70,29 @@ export const add = mutation({
     if (!validCurrencies.includes(args.currencyCode)) {
       throw new Error("Invalid currency for this budget")
     }
+
+    // Get the asset for this currency and check balance
+    const asset = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId_currencyCode", (q) =>
+        q.eq("budgetId", args.budgetId).eq("currencyCode", args.currencyCode)
+      )
+      .first()
+
+    if (!asset) {
+      throw new Error(`No asset found for ${args.currencyCode}`)
+    }
+
+    if (asset.amount < args.amount) {
+      throw new Error(
+        `Insufficient balance. Available: ${asset.amount.toFixed(2)} ${args.currencyCode}, Required: ${args.amount.toFixed(2)} ${args.currencyCode}`
+      )
+    }
+
+    // Deduct from asset
+    await ctx.db.patch(asset._id, { amount: asset.amount - args.amount })
+
+    // Record the expense
     return await ctx.db.insert("expenses", {
       budgetId: args.budgetId,
       userId: identity.subject,
@@ -98,8 +121,12 @@ export const update = mutation({
     if (!expense || expense.userId !== identity.subject) {
       throw new Error("Expense not found")
     }
+
+    const newCurrency = args.currencyCode ?? expense.currencyCode
+    const newAmount = args.amount ?? expense.amount
+
     // If currency is being changed, validate it
-    if (args.currencyCode) {
+    if (args.currencyCode && args.currencyCode !== expense.currencyCode) {
       const currencies = await ctx.db
         .query("budgetCurrencies")
         .withIndex("by_budgetId", (q) => q.eq("budgetId", expense.budgetId))
@@ -109,6 +136,47 @@ export const update = mutation({
         throw new Error("Invalid currency for this budget")
       }
     }
+
+    // Handle asset balance updates if amount or currency changed
+    if (args.amount !== undefined || args.currencyCode !== undefined) {
+      // Refund the old amount to the old currency asset
+      const oldAsset = await ctx.db
+        .query("budgetAssets")
+        .withIndex("by_budgetId_currencyCode", (q) =>
+          q.eq("budgetId", expense.budgetId).eq("currencyCode", expense.currencyCode)
+        )
+        .first()
+
+      if (oldAsset) {
+        await ctx.db.patch(oldAsset._id, { amount: oldAsset.amount + expense.amount })
+      }
+
+      // Get the new asset and check balance
+      const newAsset = await ctx.db
+        .query("budgetAssets")
+        .withIndex("by_budgetId_currencyCode", (q) =>
+          q.eq("budgetId", expense.budgetId).eq("currencyCode", newCurrency)
+        )
+        .first()
+
+      if (!newAsset) {
+        throw new Error(`No asset found for ${newCurrency}`)
+      }
+
+      if (newAsset.amount < newAmount) {
+        // Rollback the refund
+        if (oldAsset) {
+          await ctx.db.patch(oldAsset._id, { amount: oldAsset.amount })
+        }
+        throw new Error(
+          `Insufficient balance. Available: ${newAsset.amount.toFixed(2)} ${newCurrency}, Required: ${newAmount.toFixed(2)} ${newCurrency}`
+        )
+      }
+
+      // Deduct from new asset
+      await ctx.db.patch(newAsset._id, { amount: newAsset.amount - newAmount })
+    }
+
     const { id, ...updates } = args
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined)
@@ -128,6 +196,19 @@ export const remove = mutation({
     if (!expense || expense.userId !== identity.subject) {
       throw new Error("Expense not found")
     }
+
+    // Add the amount back to the asset
+    const asset = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId_currencyCode", (q) =>
+        q.eq("budgetId", expense.budgetId).eq("currencyCode", expense.currencyCode)
+      )
+      .first()
+
+    if (asset) {
+      await ctx.db.patch(asset._id, { amount: asset.amount + expense.amount })
+    }
+
     await ctx.db.delete(args.id)
   },
 })

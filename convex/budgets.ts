@@ -1,5 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { Doc } from "./_generated/dataModel"
+import { QueryCtx } from "./_generated/server"
 
 // One day in milliseconds
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
@@ -7,6 +9,119 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000
 // Calculate number of days between two timestamps (inclusive)
 function daysBetween(startMs: number, endMs: number): number {
   return Math.floor((endMs - startMs) / ONE_DAY_MS) + 1
+}
+
+// Shared helper to compute daily limit metrics for a budget
+// Used by getDailyLimit and getDashboardSummary to avoid duplication
+async function computeDailyLimitMetrics(
+  ctx: QueryCtx,
+  budget: Doc<"budgets">,
+  clientToday: number
+) {
+  const todayStart = clientToday
+  const startDate = budget.startDate
+  const endDate = budget.endDate
+
+  // Get currencies for conversion
+  const currencies = await ctx.db
+    .query("budgetCurrencies")
+    .withIndex("by_budgetId", (q) => q.eq("budgetId", budget._id))
+    .collect()
+  const rateMap = new Map(currencies.map((c) => [c.currencyCode, c.rateToMain]))
+
+  // Get all assets and calculate total in main currency
+  const assets = await ctx.db
+    .query("budgetAssets")
+    .withIndex("by_budgetId", (q) => q.eq("budgetId", budget._id))
+    .collect()
+
+  // Current remaining budget = sum of all assets converted to main currency
+  const remainingBudget = assets.reduce((sum, asset) => {
+    const rate = rateMap.get(asset.currencyCode) ?? 1
+    return sum + asset.amount * rate
+  }, 0)
+
+  // Get all income for this budget (for tracking purposes)
+  const allIncome = await ctx.db
+    .query("income")
+    .withIndex("by_budgetId", (q) => q.eq("budgetId", budget._id))
+    .collect()
+
+  // Calculate total income (converted to main currency)
+  const totalIncome = allIncome.reduce((sum, inc) => {
+    const rate = rateMap.get(inc.currencyCode) ?? 1
+    return sum + inc.amount * rate
+  }, 0)
+
+  // Get all expenses for this budget (for tracking purposes)
+  const allExpenses = await ctx.db
+    .query("expenses")
+    .withIndex("by_budgetId", (q) => q.eq("budgetId", budget._id))
+    .collect()
+
+  // Calculate total spent (all expenses converted to main currency)
+  const totalSpent = allExpenses.reduce((sum, exp) => {
+    const rate = rateMap.get(exp.currencyCode) ?? 1
+    return sum + exp.amount * rate
+  }, 0)
+
+  // Effective total budget = remaining + total spent (reconstructed)
+  const effectiveTotalBudget = remainingBudget + totalSpent
+
+  // Calculate total days in budget
+  const totalDays = daysBetween(startDate, endDate)
+  const baseDailyLimit = effectiveTotalBudget / totalDays
+
+  // Calculate days left (including today)
+  const daysLeft = Math.max(1, daysBetween(todayStart, endDate))
+
+  // Calculate days elapsed from start to yesterday (for rollover calculation)
+  const daysElapsed = Math.max(0, Math.floor((todayStart - startDate) / ONE_DAY_MS))
+
+  // Calculate what should have been spent by end of yesterday
+  const expectedSpentByYesterday = baseDailyLimit * daysElapsed
+
+  // Calculate spent before today
+  const spentBeforeToday = allExpenses
+    .filter((exp) => exp.date < todayStart)
+    .reduce((sum, exp) => {
+      const rate = rateMap.get(exp.currencyCode) ?? 1
+      return sum + exp.amount * rate
+    }, 0)
+
+  // Rollover: savings from previous days = expected - actual spent before today
+  const savingsFromPreviousDays = expectedSpentByYesterday - spentBeforeToday
+
+  // Today's adjusted daily limit = remaining budget / days left
+  const adjustedDailyLimit = Math.max(0, remainingBudget) / daysLeft
+
+  // Calculate spent today
+  const todayEnd = todayStart + ONE_DAY_MS - 1
+  const todayExpenses = allExpenses.filter(
+    (exp) => exp.date >= todayStart && exp.date <= todayEnd
+  )
+  const spentToday = todayExpenses.reduce((sum, exp) => {
+    const rate = rateMap.get(exp.currencyCode) ?? 1
+    return sum + exp.amount * rate
+  }, 0)
+
+  // Remaining for today
+  const remainingToday = adjustedDailyLimit - spentToday
+
+  return {
+    baseDailyLimit,
+    adjustedDailyLimit,
+    spentToday,
+    remainingToday,
+    totalSpent,
+    totalIncome,
+    effectiveTotalBudget,
+    remainingBudget,
+    daysLeft,
+    totalDays,
+    mainCurrency: budget.mainCurrency,
+    savingsFromPreviousDays,
+  }
 }
 
 export const list = query({
@@ -44,28 +159,57 @@ export const create = mutation({
     name: v.optional(v.string()),
     startDate: v.number(),
     endDate: v.number(),
-    totalAmount: v.number(),
     mainCurrency: v.string(),
+    initialAssets: v.array(
+      v.object({
+        currencyCode: v.string(),
+        amount: v.number(),
+        rateToMain: v.optional(v.number()),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
       throw new Error("Not authenticated")
     }
+
+    // Validate that main currency is included in initialAssets
+    const mainAsset = args.initialAssets.find(
+      (a) => a.currencyCode === args.mainCurrency
+    )
+    if (!mainAsset) {
+      throw new Error("Main currency must be included in initial assets")
+    }
+
     const budgetId = await ctx.db.insert("budgets", {
       userId: identity.subject,
       name: args.name,
       startDate: args.startDate,
       endDate: args.endDate,
-      totalAmount: args.totalAmount,
       mainCurrency: args.mainCurrency,
     })
-    // Add main currency with rate 1
-    await ctx.db.insert("budgetCurrencies", {
-      budgetId,
-      currencyCode: args.mainCurrency,
-      rateToMain: 1,
-    })
+
+    // Add currencies and assets
+    for (const asset of args.initialAssets) {
+      const isMainCurrency = asset.currencyCode === args.mainCurrency
+      const rateToMain = isMainCurrency ? 1 : (asset.rateToMain ?? 1)
+
+      // Add currency
+      await ctx.db.insert("budgetCurrencies", {
+        budgetId,
+        currencyCode: asset.currencyCode,
+        rateToMain,
+      })
+
+      // Add asset
+      await ctx.db.insert("budgetAssets", {
+        budgetId,
+        currencyCode: asset.currencyCode,
+        amount: asset.amount,
+      })
+    }
+
     return budgetId
   },
 })
@@ -76,7 +220,6 @@ export const update = mutation({
     name: v.optional(v.string()),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
-    totalAmount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -141,14 +284,10 @@ export const switchMainCurrency = mutation({
       }
     }
 
-    // Convert the total amount to the new currency
-    // totalAmount in old main * (1 / conversionRate) = totalAmount in new main
-    const newTotalAmount = budget.totalAmount / conversionRate
-
-    // Update the budget with new main currency and converted total
+    // Update the budget with new main currency
+    // Note: Assets stay in their original currencies, only the display currency changes
     await ctx.db.patch(args.id, {
       mainCurrency: args.newMainCurrency,
-      totalAmount: newTotalAmount,
     })
   },
 })
@@ -188,6 +327,22 @@ export const remove = mutation({
     for (const currency of currencies) {
       await ctx.db.delete(currency._id)
     }
+    // Delete related assets
+    const assets = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+      .collect()
+    for (const asset of assets) {
+      await ctx.db.delete(asset._id)
+    }
+    // Delete related asset transfers
+    const transfers = await ctx.db
+      .query("assetTransfers")
+      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+      .collect()
+    for (const transfer of transfers) {
+      await ctx.db.delete(transfer._id)
+    }
     // Delete budget
     await ctx.db.delete(args.id)
   },
@@ -208,101 +363,66 @@ export const getDailyLimit = query({
       return null
     }
 
-    // Use timestamps directly - they're all in client's local timezone
-    const todayStart = args.clientToday
-    const startDate = budget.startDate
-    const endDate = budget.endDate
+    return computeDailyLimitMetrics(ctx, budget, args.clientToday)
+  },
+})
 
-    // Get currencies for conversion
-    const currencies = await ctx.db
-      .query("budgetCurrencies")
-      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
-      .collect()
-    const rateMap = new Map(currencies.map((c) => [c.currencyCode, c.rateToMain]))
+export const getDashboardSummary = query({
+  args: {
+    clientToday: v.number(), // Client's "today" timestamp (midnight local time)
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return null
+    }
+    const userId = identity.subject
 
-    // Get all income for this budget
-    const allIncome = await ctx.db
-      .query("income")
-      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
-      .collect()
-
-    // Calculate total income (converted to main currency)
-    const totalIncome = allIncome.reduce((sum, inc) => {
-      const rate = rateMap.get(inc.currencyCode) ?? 1
-      return sum + inc.amount * rate
-    }, 0)
-
-    // Effective total budget = initial amount + income
-    const effectiveTotalBudget = budget.totalAmount + totalIncome
-
-    // Calculate total days in budget
-    const totalDays = daysBetween(startDate, endDate)
-    const baseDailyLimit = effectiveTotalBudget / totalDays
-
-    // Get all expenses for this budget
-    const allExpenses = await ctx.db
-      .query("expenses")
-      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
+    // Get all budgets for the user
+    const budgets = await ctx.db
+      .query("budgets")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect()
 
-    // Calculate total spent (all expenses converted to main currency)
-    const totalSpent = allExpenses.reduce((sum, exp) => {
-      const rate = rateMap.get(exp.currencyCode) ?? 1
-      return sum + exp.amount * rate
-    }, 0)
+    if (budgets.length === 0) {
+      return null
+    }
 
-    // Calculate remaining budget
-    const remainingBudget = Math.max(0, effectiveTotalBudget - totalSpent)
+    const clientToday = args.clientToday
+    const sevenDaysFromNow = clientToday + 7 * ONE_DAY_MS
 
-    // Calculate days left (including today)
-    const daysLeft = Math.max(1, daysBetween(todayStart, endDate))
+    // Compute metrics for each budget
+    const budgetMetrics = await Promise.all(
+      budgets.map(async (budget) => {
+        const metrics = await computeDailyLimitMetrics(ctx, budget, clientToday)
+        const isOverToday = metrics.remainingToday < 0
+        // Ending soon: endDate is in the future and within 7 days (inclusive)
+        const isEndingSoon =
+          budget.endDate >= clientToday && budget.endDate <= sevenDaysFromNow
 
-    // Calculate days elapsed from start to yesterday (for rollover calculation)
-    const daysElapsed = Math.max(0, Math.floor((todayStart - startDate) / ONE_DAY_MS))
-
-    // Calculate what should have been spent by end of yesterday
-    const expectedSpentByYesterday = baseDailyLimit * daysElapsed
-
-    // Calculate spent before today
-    const spentBeforeToday = allExpenses
-      .filter((exp) => exp.date < todayStart)
-      .reduce((sum, exp) => {
-        const rate = rateMap.get(exp.currencyCode) ?? 1
-        return sum + exp.amount * rate
-      }, 0)
-
-    // Rollover: savings from previous days = expected - actual spent before today
-    const savingsFromPreviousDays = expectedSpentByYesterday - spentBeforeToday
-
-    // Today's adjusted daily limit = remaining budget / days left
-    const adjustedDailyLimit = remainingBudget / daysLeft
-
-    // Calculate spent today
-    const todayEnd = todayStart + ONE_DAY_MS - 1
-    const todayExpenses = allExpenses.filter(
-      (exp) => exp.date >= todayStart && exp.date <= todayEnd
+        return {
+          budgetId: budget._id,
+          name: budget.name,
+          mainCurrency: budget.mainCurrency,
+          remainingToday: metrics.remainingToday,
+          spentToday: metrics.spentToday,
+          isOverToday,
+          endDate: budget.endDate,
+          isEndingSoon,
+        }
+      })
     )
-    const spentToday = todayExpenses.reduce((sum, exp) => {
-      const rate = rateMap.get(exp.currencyCode) ?? 1
-      return sum + exp.amount * rate
-    }, 0)
 
-    // Remaining for today
-    const remainingToday = adjustedDailyLimit - spentToday
+    // Calculate summary counts
+    const budgetCount = budgetMetrics.length
+    const overBudgetCount = budgetMetrics.filter((b) => b.isOverToday).length
+    const endingSoonCount = budgetMetrics.filter((b) => b.isEndingSoon).length
 
     return {
-      baseDailyLimit,
-      adjustedDailyLimit,
-      spentToday,
-      remainingToday,
-      totalSpent,
-      totalIncome,
-      effectiveTotalBudget,
-      remainingBudget,
-      daysLeft,
-      totalDays,
-      mainCurrency: budget.mainCurrency,
-      savingsFromPreviousDays,
+      budgetCount,
+      overBudgetCount,
+      endingSoonCount,
+      budgets: budgetMetrics,
     }
   },
 })
@@ -334,6 +454,18 @@ export const getDailyBreakdown = query({
       .collect()
     const rateMap = new Map(currencies.map((c) => [c.currencyCode, c.rateToMain]))
 
+    // Get all assets and calculate total in main currency
+    const assets = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
+      .collect()
+
+    // Current remaining budget = sum of all assets converted to main currency
+    const currentAssetTotal = assets.reduce((sum, asset) => {
+      const rate = rateMap.get(asset.currencyCode) ?? 1
+      return sum + asset.amount * rate
+    }, 0)
+
     // Get all income for this budget
     const allIncome = await ctx.db
       .query("income")
@@ -346,15 +478,20 @@ export const getDailyBreakdown = query({
       return sum + inc.amount * rate
     }, 0)
 
-      // Get all expenses for this budget
-      const allExpenses = await ctx.db
+    // Get all expenses for this budget
+    const allExpenses = await ctx.db
       .query("expenses")
       .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
       .collect()
 
+    // Calculate total spent (all expenses converted to main currency)
+    const totalSpent = allExpenses.reduce((sum, exp) => {
+      const rate = rateMap.get(exp.currencyCode) ?? 1
+      return sum + exp.amount * rate
+    }, 0)
 
-    // Effective total budget = initial amount + income
-    const effectiveTotalBudget = budget.totalAmount + totalIncome
+    // Effective total budget = current assets + total spent (reconstructed)
+    const effectiveTotalBudget = currentAssetTotal + totalSpent
 
     // Calculate total days and base daily limit
     const totalDays = daysBetween(startDate, endDate)
@@ -381,14 +518,8 @@ export const getDailyBreakdown = query({
       incomeByDay.set(dayKey, current + inc.amount * rate)
     }
 
-    // Calculate total spent so far (for projecting future daily limits)
-    const totalSpent = allExpenses.reduce((sum, exp) => {
-      const rate = rateMap.get(exp.currencyCode) ?? 1
-      return sum + exp.amount * rate
-    }, 0)
-
-    // Remaining budget from today onward
-    const remainingBudget = effectiveTotalBudget - totalSpent
+    // Remaining budget from today onward (current asset total)
+    const remainingBudget = currentAssetTotal
 
     // Days left including today (minimum 1 to avoid division by zero)
     const daysLeft = Math.max(1, daysBetween(todayStart, endDate))
@@ -471,7 +602,7 @@ export const getDailyBreakdown = query({
       remainingBudget,
       totalSpent,
       daysLeft,
-      initialBudget: budget.totalAmount,
+      initialBudget: effectiveTotalBudget, // Total budget including income
       totalIncome,
     }
   },
