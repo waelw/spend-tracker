@@ -346,6 +346,13 @@ export const getDailyBreakdown = query({
       return sum + inc.amount * rate
     }, 0)
 
+      // Get all expenses for this budget
+      const allExpenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
+      .collect()
+
+
     // Effective total budget = initial amount + income
     const effectiveTotalBudget = budget.totalAmount + totalIncome
 
@@ -353,11 +360,7 @@ export const getDailyBreakdown = query({
     const totalDays = daysBetween(startDate, endDate)
     const baseDailyLimit = effectiveTotalBudget / totalDays
 
-    // Get all expenses for this budget
-    const allExpenses = await ctx.db
-      .query("expenses")
-      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
-      .collect()
+  
 
     // Group expenses by day (using the stored timestamp directly)
     const expensesByDay = new Map<number, number>()
@@ -377,6 +380,21 @@ export const getDailyBreakdown = query({
       const current = incomeByDay.get(dayKey) ?? 0
       incomeByDay.set(dayKey, current + inc.amount * rate)
     }
+
+    // Calculate total spent so far (for projecting future daily limits)
+    const totalSpent = allExpenses.reduce((sum, exp) => {
+      const rate = rateMap.get(exp.currencyCode) ?? 1
+      return sum + exp.amount * rate
+    }, 0)
+
+    // Remaining budget from today onward
+    const remainingBudget = effectiveTotalBudget - totalSpent
+
+    // Days left including today (minimum 1 to avoid division by zero)
+    const daysLeft = Math.max(1, daysBetween(todayStart, endDate))
+
+    // Projected daily limit for today and all future days
+    const projectedDailyLimit = remainingBudget / daysLeft
 
     // Find secondary currency (first non-main currency)
     const secondaryCurrency = currencies.find(c => c.currencyCode !== budget.mainCurrency)
@@ -404,26 +422,29 @@ export const getDailyBreakdown = query({
       const isPast = dayTimestamp < todayStart
       const isFuture = dayTimestamp > todayStart
 
-      // Daily limit = base limit + any rollover from previous days
-      // But we spread rollover across remaining days
-      const remainingDays = totalDays - i
-      const dailyLimit = baseDailyLimit + (carryOver / remainingDays)
+      const spent = expensesByDay.get(dayTimestamp) ?? 0
+      const income = incomeByDay.get(dayTimestamp) ?? 0
+
+      let dailyLimit: number
+      let dayRollover = 0
+
+      if (isPast) {
+        // Past days: Use rollover-based calculation (historical view)
+        const remainingDaysFromThisDay = totalDays - i
+        dailyLimit = baseDailyLimit + (carryOver / remainingDaysFromThisDay)
+        dayRollover = dailyLimit - spent
+        carryOver += dayRollover
+      } else {
+        // Today and future: Use uniform projected limit based on remaining budget
+        dailyLimit = projectedDailyLimit
+      }
+
+      const remaining = dailyLimit - spent
 
       // Calculate equivalent in secondary currency
       const dailyLimitSecondary = secondaryCurrency
         ? dailyLimit / secondaryCurrency.rateToMain
         : null
-
-      const spent = expensesByDay.get(dayTimestamp) ?? 0
-      const income = incomeByDay.get(dayTimestamp) ?? 0
-      const remaining = dailyLimit - spent
-
-      // For past days, calculate what rolls over to next days
-      let dayRollover = 0
-      if (isPast) {
-        dayRollover = remaining
-        carryOver += dayRollover
-      }
 
       days.push({
         date: dayTimestamp,
@@ -446,6 +467,10 @@ export const getDailyBreakdown = query({
       secondaryCurrency: secondaryCurrency?.currencyCode ?? null,
       totalDays,
       baseDailyLimit,
+      projectedDailyLimit,
+      remainingBudget,
+      totalSpent,
+      daysLeft,
       initialBudget: budget.totalAmount,
       totalIncome,
     }
