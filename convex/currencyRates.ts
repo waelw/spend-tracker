@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { action, internalQuery, internalMutation } from "./_generated/server"
+import { action, internalAction, internalQuery, internalMutation } from "./_generated/server"
 import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 
@@ -207,5 +207,121 @@ export const refreshRates = action({
       updated: updatedCount,
       total: currenciesToUpdate.length,
     }
+  },
+})
+
+// Internal query to get all budgets (for cron job)
+export const getAllBudgetsInternal = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("budgets").collect()
+  },
+})
+
+/**
+ * Internal action to refresh rates for ALL budgets.
+ * Used by the cron job to update exchange rates automatically.
+ */
+export const refreshAllRates = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ budgetsProcessed: number; totalUpdated: number; errors: string[] }> => {
+    // Get API key from environment
+    const apiKey = process.env.EXCHANGE_RATE_API_KEY
+    if (!apiKey) {
+      console.error("EXCHANGE_RATE_API_KEY not configured, skipping rate refresh")
+      return { budgetsProcessed: 0, totalUpdated: 0, errors: ["API key not configured"] }
+    }
+
+    // Get all budgets
+    const budgets = await ctx.runQuery(internal.currencyRates.getAllBudgetsInternal, {})
+
+    let budgetsProcessed = 0
+    let totalUpdated = 0
+    const errors: string[] = []
+
+    // Group budgets by main currency to minimize API calls
+    const budgetsByMainCurrency: Record<string, typeof budgets> = {}
+    for (const budget of budgets) {
+      if (!budgetsByMainCurrency[budget.mainCurrency]) {
+        budgetsByMainCurrency[budget.mainCurrency] = []
+      }
+      budgetsByMainCurrency[budget.mainCurrency].push(budget)
+    }
+
+    // Fetch rates once per main currency and update all related budgets
+    for (const mainCurrency of Object.keys(budgetsByMainCurrency)) {
+      const currencyBudgets = budgetsByMainCurrency[mainCurrency]
+      let conversionRates: Record<string, number> | null = null
+
+      // Fetch exchange rates for this main currency
+      try {
+        const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/${mainCurrency}`
+        const response = await fetch(apiUrl)
+
+        if (!response.ok) {
+          errors.push(`API error for ${mainCurrency}: ${response.status}`)
+          continue
+        }
+
+        const data: ExchangeRateResponse = await response.json()
+
+        if (data.result !== "success" || !data.conversion_rates) {
+          errors.push(`Invalid response for ${mainCurrency}: ${data["error-type"] || "no rates"}`)
+          continue
+        }
+
+        conversionRates = data.conversion_rates
+      } catch (e) {
+        errors.push(`Failed to fetch rates for ${mainCurrency}: ${e instanceof Error ? e.message : "unknown"}`)
+        continue
+      }
+
+      // Update all budgets with this main currency
+      for (const budget of currencyBudgets) {
+        const currencies = await ctx.runQuery(internal.currencyRates.getCurrenciesInternal, {
+          budgetId: budget._id,
+        })
+
+        // Filter to non-main currencies
+        const currenciesToUpdate = currencies.filter(
+          (c: { currencyCode: string }) => c.currencyCode !== budget.mainCurrency
+        )
+
+        if (currenciesToUpdate.length === 0) {
+          budgetsProcessed++
+          continue
+        }
+
+        // Update each currency
+        for (const currency of currenciesToUpdate) {
+          const apiRate = conversionRates[currency.currencyCode]
+
+          if (apiRate === undefined || apiRate === null || apiRate <= 0) {
+            continue
+          }
+
+          const rateToMain = 1 / apiRate
+
+          try {
+            await ctx.runMutation(internal.currencyRates.updateRateInternal, {
+              id: currency._id,
+              rateToMain,
+            })
+            totalUpdated++
+          } catch {
+            errors.push(`Failed to update ${currency.currencyCode} for budget ${budget._id}`)
+          }
+        }
+
+        budgetsProcessed++
+      }
+    }
+
+    console.log(`Cron: Refreshed rates for ${budgetsProcessed} budgets, updated ${totalUpdated} currencies`)
+    if (errors.length > 0) {
+      console.warn(`Cron rate refresh errors: ${errors.join(", ")}`)
+    }
+
+    return { budgetsProcessed, totalUpdated, errors }
   },
 })
