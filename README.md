@@ -176,6 +176,21 @@ spend-tracker/
    - Exchange rate to main currency (e.g., 1 EUR = 1.1 USD means rate is 1.1)
 5. Click **"Add"**
 
+### Updating Exchange Rates from API (Optional)
+
+You can optionally fetch live exchange rates from an external API:
+
+1. Get a free API key from [exchangerate-api.com](https://www.exchangerate-api.com/) (1500 requests/month free)
+2. Set the API key in Convex environment:
+   ```bash
+   npx convex env set EXCHANGE_RATE_API_KEY your_api_key_here
+   ```
+3. In the budget detail page, click **"Update Rates"** in the Currencies section
+4. All non-main currency rates will be updated from the API
+5. You can still manually edit any rate after a refresh to override it
+
+**Note:** Without the API key configured, the "Update Rates" button will show an error. Manual rate entry always works regardless of API configuration.
+
 ### Adding Expenses
 
 1. Open a budget detail page
@@ -231,6 +246,10 @@ Make sure to set these environment variables in your hosting platform:
 
 - `VITE_CONVEX_URL` - Your Convex deployment URL
 - `VITE_CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key
+
+**Convex Environment Variables** (set via `npx convex env set`):
+- `CLERK_JWT_ISSUER_DOMAIN` - Your Clerk issuer URL (required)
+- `EXCHANGE_RATE_API_KEY` - API key from [exchangerate-api.com](https://www.exchangerate-api.com/) (optional, for live rate updates)
 
 ### Convex Production Deployment
 

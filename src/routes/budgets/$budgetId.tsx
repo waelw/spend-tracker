@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { useState, useRef } from "react"
 import { format } from "date-fns"
-import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Parse date string as local time (not UTC)
@@ -565,7 +565,13 @@ function BudgetDetail() {
                   Manage exchange rates for this budget
                 </CardDescription>
               </div>
-              <AddCurrencyDialog budgetId={budgetId as Id<"budgets">} />
+              <div className="flex items-center gap-2">
+                <UpdateRatesButton
+                  budgetId={budgetId as Id<"budgets">}
+                  hasNonMainCurrencies={currencies ? currencies.some(c => c.currencyCode !== budget.mainCurrency) : false}
+                />
+                <AddCurrencyDialog budgetId={budgetId as Id<"budgets">} />
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -695,6 +701,73 @@ function BudgetDetail() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function UpdateRatesButton({
+  budgetId,
+  hasNonMainCurrencies,
+}: {
+  budgetId: Id<"budgets">
+  hasNonMainCurrencies: boolean
+}) {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  const refreshRatesAction = useAction(api.currencyRates.refreshRates)
+
+  const handleUpdateRates = async () => {
+    setIsUpdating(true)
+    setMessage(null)
+
+    try {
+      const result = await refreshRatesAction({ budgetId })
+      setMessage({
+        type: result.success ? "success" : "error",
+        text: result.message,
+      })
+      // Clear success message after 3 seconds
+      if (result.success) {
+        setTimeout(() => setMessage(null), 3000)
+      }
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to update rates. Please try again.",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Don't show button if there are no non-main currencies
+  if (!hasNonMainCurrencies) {
+    return null
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleUpdateRates}
+        disabled={isUpdating}
+      >
+        <RefreshCw className={`mr-2 h-4 w-4 ${isUpdating ? "animate-spin" : ""}`} />
+        {isUpdating ? "Updating..." : "Update Rates"}
+      </Button>
+      {message && (
+        <div
+          className={`absolute top-full right-0 mt-2 p-2 rounded-md text-sm whitespace-nowrap z-10 ${
+            message.type === "success"
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
     </div>
   )
 }

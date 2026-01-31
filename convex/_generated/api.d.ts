@@ -10,6 +10,7 @@
 
 import type * as budgetCurrencies from "../budgetCurrencies.js";
 import type * as budgets from "../budgets.js";
+import type * as currencyRates from "../currencyRates.js";
 import type * as expenses from "../expenses.js";
 import type * as income from "../income.js";
 
@@ -22,6 +23,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   budgetCurrencies: typeof budgetCurrencies;
   budgets: typeof budgets;
+  currencyRates: typeof currencyRates;
   expenses: typeof expenses;
   income: typeof income;
 }>;
