@@ -140,11 +140,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
         <ThemeProvider defaultTheme="system" storageKey="spend-tracker-theme">
           <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="container mx-auto flex h-14 items-center">
+              <div className="max-w-7xl mx-auto flex h-14 items-center px-4 sm:px-6 lg:px-8">
                 <div className="mr-4 flex">
                   <Link to="/" className="mr-6 flex items-center space-x-2">
                     <span className="font-bold">Spend Tracker</span>
@@ -179,7 +179,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </header>
-            <main className="container mx-auto py-6">{children}</main>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
           </div>
           <TanStackDevtools
             config={{

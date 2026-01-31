@@ -284,7 +284,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is private and for personal use.
+This project is open source and available under the [MIT License](LICENSE).
 
 ## Acknowledgments
 

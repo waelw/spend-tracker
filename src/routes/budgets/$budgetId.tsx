@@ -649,10 +649,10 @@ function BudgetDetail() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[70px] sm:w-auto">Date</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[50px] sm:w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -676,10 +676,10 @@ function BudgetDetail() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[70px] sm:w-auto">Date</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[50px] sm:w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1086,9 +1086,12 @@ function ExpenseRow({
 
   return (
     <TableRow>
-      <TableCell>{format(new Date(expense.date), "MMM d, yyyy")}</TableCell>
-      <TableCell>{expense.description || "-"}</TableCell>
-      <TableCell className="text-right font-medium">
+      <TableCell className="whitespace-nowrap">
+        <span className="hidden sm:inline">{format(new Date(expense.date), "MMM d, yyyy")}</span>
+        <span className="sm:hidden">{format(new Date(expense.date), "M/d")}</span>
+      </TableCell>
+      <TableCell className="max-w-[120px] truncate sm:max-w-none">{expense.description || "-"}</TableCell>
+      <TableCell className="text-right font-medium whitespace-nowrap">
         {formatCurrency(expense.amount, expense.currencyCode)}
       </TableCell>
       <TableCell>
@@ -1247,9 +1250,12 @@ function IncomeRow({
 
   return (
     <TableRow>
-      <TableCell>{format(new Date(income.date), "MMM d, yyyy")}</TableCell>
-      <TableCell>{income.description || "-"}</TableCell>
-      <TableCell className="text-right font-medium text-green-600">
+      <TableCell className="whitespace-nowrap">
+        <span className="hidden sm:inline">{format(new Date(income.date), "MMM d, yyyy")}</span>
+        <span className="sm:hidden">{format(new Date(income.date), "M/d")}</span>
+      </TableCell>
+      <TableCell className="max-w-[120px] truncate sm:max-w-none">{income.description || "-"}</TableCell>
+      <TableCell className="text-right font-medium text-green-600 whitespace-nowrap">
         +{formatCurrency(income.amount, income.currencyCode)}
       </TableCell>
       <TableCell>
