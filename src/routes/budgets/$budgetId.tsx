@@ -2723,6 +2723,71 @@ function RecurringItemRow({
       </div>
     </div>
   )
+  }
+
+  return (
+    <div className={`p-4 border rounded-lg ${item.paused ? "bg-muted/30 opacity-60" : ""}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-sm font-medium ${item.type === "income" ? "text-green-600" : ""}`}>
+              {item.type === "expense" ? "-" : "+"}{formatCurrency(item.amount, item.currencyCode)}
+            </span>
+            <span className="text-xs bg-secondary px-2 py-0.5 rounded capitalize">
+              {item.frequency}
+            </span>
+            {item.paused && (
+              <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                Paused
+              </span>
+            )}
+          </div>
+          {item.description && (
+            <p className="text-sm">{item.description}</p>
+          )}
+          {item.type === "expense" && item.category && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+              {item.category}
+            </span>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Starts: {format(new Date(item.startDate), "MMM d, yyyy")}
+            {item.endDate && ` • Ends: ${format(new Date(item.endDate), "MMM d, yyyy")}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleTogglePaused}
+            title={item.paused ? "Resume" : "Pause"}
+            disabled={isUpdating}
+          >
+            {item.paused ? (
+              <Play className="h-4 w-4" />
+            ) : (
+              <Pause className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleStartEdit}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function DuplicateBudgetDialog({
@@ -2832,70 +2897,5 @@ function DuplicateBudgetDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-  return (
-    <div className={`p-4 border rounded-lg ${item.paused ? "bg-muted/30 opacity-60" : ""}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm font-medium ${item.type === "income" ? "text-green-600" : ""}`}>
-              {item.type === "expense" ? "-" : "+"}{formatCurrency(item.amount, item.currencyCode)}
-            </span>
-            <span className="text-xs bg-secondary px-2 py-0.5 rounded capitalize">
-              {item.frequency}
-            </span>
-            {item.paused && (
-              <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
-                Paused
-              </span>
-            )}
-          </div>
-          {item.description && (
-            <p className="text-sm">{item.description}</p>
-          )}
-          {item.type === "expense" && item.category && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-              {item.category}
-            </span>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Starts: {format(new Date(item.startDate), "MMM d, yyyy")}
-            {item.endDate && ` • Ends: ${format(new Date(item.endDate), "MMM d, yyyy")}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleTogglePaused}
-            title={item.paused ? "Resume" : "Pause"}
-            disabled={isUpdating}
-          >
-            {item.paused ? (
-              <Play className="h-4 w-4" />
-            ) : (
-              <Pause className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleStartEdit}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
   )
 }
