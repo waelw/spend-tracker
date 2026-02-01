@@ -26,7 +26,7 @@
     },
     {
       "description": "Budget copy / template: Add budgets.duplicate mutation (or 'create from template') that copies a budget (name, date range, totalAmount, mainCurrency), copies all budgetCurrencies, and optionally copies no/partial/full expenses and income. UI: 'Duplicate budget' or 'New from this budget' on dashboard or budget detail.",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Alerts / notifications: When daily spending exceeds a threshold (e.g. 80% or 100% of daily limit), create an in-app alert or notification. Optional schema: alerts table or userSettings (e.g. notify when remaining < X%). Delivery: in-app only (badge + Alerts view) first; optional later: Clerk/web push/email.",

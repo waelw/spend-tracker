@@ -348,6 +348,123 @@ export const remove = mutation({
   },
 })
 
+export const duplicate = mutation({
+  args: {
+    id: v.id("budgets"),
+    copyExpenses: v.optional(v.boolean()),
+    copyIncome: v.optional(v.boolean()),
+    copyRecurringItems: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Not authenticated")
+    }
+    const originalBudget = await ctx.db.get(args.id)
+    if (!originalBudget || originalBudget.userId !== identity.subject) {
+      throw new Error("Budget not found")
+    }
+
+    // Create new budget with copied data
+    const newBudgetId = await ctx.db.insert("budgets", {
+      userId: identity.subject,
+      name: originalBudget.name ? `${originalBudget.name} (Copy)` : undefined,
+      startDate: originalBudget.startDate,
+      endDate: originalBudget.endDate,
+      mainCurrency: originalBudget.mainCurrency,
+    })
+
+    // Copy all budgetCurrencies
+    const currencies = await ctx.db
+      .query("budgetCurrencies")
+      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+      .collect()
+    for (const currency of currencies) {
+      await ctx.db.insert("budgetCurrencies", {
+        budgetId: newBudgetId,
+        currencyCode: currency.currencyCode,
+        rateToMain: currency.rateToMain,
+      })
+    }
+
+    // Copy all budgetAssets
+    const assets = await ctx.db
+      .query("budgetAssets")
+      .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+      .collect()
+    for (const asset of assets) {
+      await ctx.db.insert("budgetAssets", {
+        budgetId: newBudgetId,
+        currencyCode: asset.currencyCode,
+        amount: asset.amount,
+      })
+    }
+
+    // Optionally copy expenses
+    if (args.copyExpenses) {
+      const expenses = await ctx.db
+        .query("expenses")
+        .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+        .collect()
+      for (const expense of expenses) {
+        await ctx.db.insert("expenses", {
+          budgetId: newBudgetId,
+          userId: identity.subject,
+          amount: expense.amount,
+          currencyCode: expense.currencyCode,
+          date: expense.date,
+          description: expense.description,
+          category: expense.category,
+        })
+      }
+    }
+
+    // Optionally copy income
+    if (args.copyIncome) {
+      const incomeEntries = await ctx.db
+        .query("income")
+        .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+        .collect()
+      for (const income of incomeEntries) {
+        await ctx.db.insert("income", {
+          budgetId: newBudgetId,
+          userId: identity.subject,
+          amount: income.amount,
+          currencyCode: income.currencyCode,
+          date: income.date,
+          description: income.description,
+        })
+      }
+    }
+
+    // Optionally copy recurring items
+    if (args.copyRecurringItems) {
+      const recurringItems = await ctx.db
+        .query("recurringItems")
+        .withIndex("by_budgetId", (q) => q.eq("budgetId", args.id))
+        .collect()
+      for (const item of recurringItems) {
+        await ctx.db.insert("recurringItems", {
+          budgetId: newBudgetId,
+          userId: identity.subject,
+          type: item.type,
+          amount: item.amount,
+          currencyCode: item.currencyCode,
+          description: item.description,
+          category: item.category,
+          frequency: item.frequency,
+          startDate: item.startDate,
+          endDate: item.endDate,
+          lastGeneratedDate: item.lastGeneratedDate,
+          paused: item.paused,
+        })
+      }
+    }
+
+    return newBudgetId
+  },
+})
+
 export const getDailyLimit = query({
   args: {
     budgetId: v.id("budgets"),

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { useState, useRef } from "react"
 import { format } from "date-fns"
-import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX, Download, Repeat, Pause, Play } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX, Download, Repeat, Pause, Play, Copy } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Parse date string as local time (not UTC)
@@ -257,32 +257,35 @@ function BudgetDetail() {
             </p>
           </div>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="destructive" size="sm">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Budget
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Budget</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this budget? This will also delete
-                all associated currencies and expenses. This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteBudget}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
+        <div className="flex gap-2">
+          <DuplicateBudgetDialog budgetId={budgetId as Id<"budgets">} />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Budget
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Budget</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this budget? This will also delete
+                  all associated currencies and expenses. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteBudget}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Daily Limit Summary */}
@@ -2717,10 +2720,120 @@ function RecurringItemRow({
             <Check className="h-4 w-4 mr-1" />
             {isUpdating ? "Saving..." : "Save"}
           </Button>
-        </div>
       </div>
-    )
+    </div>
+  )
+}
+
+function DuplicateBudgetDialog({
+  budgetId,
+}: {
+  budgetId: Id<"budgets">
+}) {
+  const [open, setOpen] = useState(false)
+  const [copyExpenses, setCopyExpenses] = useState(false)
+  const [copyIncome, setCopyIncome] = useState(false)
+  const [copyRecurringItems, setCopyRecurringItems] = useState(false)
+  const [isDuplicating, setIsDuplicating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const duplicateBudgetMutation = useMutation(api.budgets.duplicate)
+  const navigate = useNavigate()
+
+  const handleDuplicate = async () => {
+    setIsDuplicating(true)
+    setError(null)
+
+    try {
+      const newBudgetId = await duplicateBudgetMutation({
+        id: budgetId,
+        copyExpenses,
+        copyIncome,
+        copyRecurringItems,
+      })
+      setOpen(false)
+      navigate({ to: "/budgets/$budgetId", params: { budgetId: newBudgetId } })
+    } catch (err) {
+      console.error("Failed to duplicate budget:", err)
+      setError(err instanceof Error ? err.message : "Failed to duplicate budget")
+    } finally {
+      setIsDuplicating(false)
+    }
   }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Copy className="mr-2 h-4 w-4" />
+          Duplicate
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Duplicate Budget</DialogTitle>
+          <DialogDescription>
+            Create a copy of this budget. Choose what to include.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {error}
+            </div>
+          )}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="copy-expenses">Copy expenses</Label>
+              <input
+                id="copy-expenses"
+                type="checkbox"
+                checked={copyExpenses}
+                onChange={(e) => setCopyExpenses(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="copy-income">Copy income</Label>
+              <input
+                id="copy-income"
+                type="checkbox"
+                checked={copyIncome}
+                onChange={(e) => setCopyIncome(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="copy-recurring">Copy recurring items</Label>
+              <input
+                id="copy-recurring"
+                type="checkbox"
+                checked={copyRecurringItems}
+                onChange={(e) => setCopyRecurringItems(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={isDuplicating}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDuplicate}
+            disabled={isDuplicating}
+          >
+            {isDuplicating ? "Duplicating..." : "Duplicate Budget"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
   return (
     <div className={`p-4 border rounded-lg ${item.paused ? "bg-muted/30 opacity-60" : ""}`}>

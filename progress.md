@@ -1,5 +1,35 @@
 # Progress Log
 
+## 2026-02-01: Budget Copy/Template Feature
+
+### Completed
+- Added `duplicate` mutation in `convex/budgets.ts`:
+  - Creates a new budget with copied name (appends "(Copy)" suffix)
+  - Copies date range and main currency
+  - Copies all budgetCurrencies
+  - Copies all budgetAssets
+  - Optional parameters for copying:
+    - expenses
+    - income
+    - recurring items
+  - Returns the new budgetId
+
+- Added `DuplicateBudgetDialog` component in `src/routes/budgets/$budgetId.tsx`:
+  - Dialog with checkboxes to select what to copy
+  - Options: copy expenses, copy income, copy recurring items
+  - Form validation and error handling
+  - Loading state during duplication
+  - Navigates to the new budget after successful duplication
+
+- Updated UI in `src/routes/budgets/$budgetId.tsx`:
+  - Added `Copy` icon to imports from lucide-react
+  - Added "Duplicate" button next to "Delete Budget" button
+  - Button opens the DuplicateBudgetDialog
+
+### Files Changed
+- `convex/budgets.ts` - Added duplicate mutation
+- `src/routes/budgets/$budgetId.tsx` - Added DuplicateBudgetDialog component and button
+
 ## 2026-02-01: Recurring Expenses/Income Feature
 
 ### Completed
