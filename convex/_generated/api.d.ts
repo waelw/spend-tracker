@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as alerts from "../alerts.js";
 import type * as budgetAssets from "../budgetAssets.js";
 import type * as budgetCurrencies from "../budgetCurrencies.js";
 import type * as budgets from "../budgets.js";
@@ -26,6 +27,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  alerts: typeof alerts;
   budgetAssets: typeof budgetAssets;
   budgetCurrencies: typeof budgetCurrencies;
   budgets: typeof budgets;

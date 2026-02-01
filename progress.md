@@ -185,3 +185,44 @@
 - `convex/expenses.ts` - Enhanced listByBudget query with filter parameters
 - `convex/income.ts` - Enhanced listByBudget query with filter parameters
 - `src/routes/budgets/$budgetId.tsx` - Added filter UI and state management
+
+## 2026-02-01: Alerts/Notifications Feature
+
+### Completed
+- Added `alerts` schema table in `convex/schema.ts`:
+  - Fields: userId, budgetId, type (overBudgetToday/overBudgetThreshold/budgetEndingSoon), message, isRead, createdAt
+  - Indexes: by_userId, by_userId_isRead, by_budgetId
+
+- Created `convex/alerts.ts` with full CRUD operations:
+  - `list` - Query all unread alerts for user
+  - `listAll` - Query all alerts for user
+  - `markAsRead` - Mark single alert as read
+  - `markAllAsRead` - Mark all alerts as read
+  - `remove` - Delete alert
+  - `generateAlertsForAllBudgets` - Mutation that checks all budgets and creates alerts for:
+    - Over budget today (remainingToday < 0)
+    - Over threshold (remainingToday < 20% of daily limit)
+    - Budget ending soon (ends within 7 days)
+  - Alerts are only created if same type doesn't already exist for a budget
+
+- Updated UI in `src/routes/index.tsx`:
+  - Added `Bell`, `Check`, `CheckCheck`, `Trash2` icons from lucide-react
+  - Added `Dialog` component from UI components
+  - Added bell icon badge in dashboard header showing unread count
+  - Created Alerts dialog with:
+    - List of all alerts
+    - "Mark All Read" button
+    - Individual "Mark as Read" button per alert
+    - Delete button per alert
+    - Each alert links to budget detail page
+    - Read alerts displayed with dimmed background
+  - Added convex mutation hooks for alert actions
+
+- Updated `convex/budgets.ts`:
+  - Added `internalComputeDailyLimitMetrics` internal query for reusing daily limit calculation logic
+
+### Files Changed
+- `convex/schema.ts` - Added alerts table and indexes
+- `convex/alerts.ts` - New file with alerts CRUD and generation logic
+- `convex/budgets.ts` - Added internal query for daily limit metrics
+- `src/routes/index.tsx` - Added alerts UI components and integration

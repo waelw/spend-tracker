@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
+import { useMutation as useConvexMutation } from "convex/react"
 import { convexQuery } from "@convex-dev/react-query"
 import { SignedIn, SignedOut } from "@clerk/tanstack-react-start"
 import { format } from "date-fns"
-import { Plus, Wallet, AlertTriangle, Clock, TrendingDown } from "lucide-react"
+import { Plus, Wallet, AlertTriangle, Clock, TrendingDown, Bell, Check, CheckCheck, Trash2 } from "lucide-react"
+import { useState } from "react"
 
 // Get today's date at midnight in local timezone
 function getTodayTimestamp(): number {
@@ -35,6 +37,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -73,10 +83,17 @@ function WelcomePage() {
 
 function Dashboard() {
   const clientToday = getTodayTimestamp()
+  const [alertsOpen, setAlertsOpen] = useState(false)
   const { data: budgets, isLoading } = useQuery(convexQuery(api.budgets.list, {}))
   const { data: summary } = useQuery(
     convexQuery(api.budgets.getDashboardSummary, { clientToday })
   )
+  const { data: unreadAlerts } = useQuery(convexQuery(api.alerts.list, {}))
+  const { data: allAlerts } = useQuery(convexQuery(api.alerts.listAll, {}))
+
+  const markAsRead = useConvexMutation(api.alerts.markAsRead)
+  const markAllAsRead = useConvexMutation(api.alerts.markAllAsRead)
+  const removeAlert = useConvexMutation(api.alerts.remove)
 
   if (isLoading) {
     return (
@@ -106,18 +123,104 @@ function Dashboard() {
     )
   }
 
+  const unreadCount = unreadAlerts?.length || 0
+
   return (
     <div className="space-y-6">
       {summary && <DashboardSummary summary={summary} />}
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Your Budgets</h1>
-        <Button asChild>
-          <Link to="/budgets/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Budget
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Dialog open={alertsOpen} onOpenChange={setAlertsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white text-xs flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[500px] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Alerts</DialogTitle>
+                <DialogDescription>
+                  Stay updated on your budget status
+                </DialogDescription>
+              </DialogHeader>
+              {allAlerts && allAlerts.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => markAllAsRead({})}
+                    >
+                      <CheckCheck className="mr-2 h-4 w-4" />
+                      Mark All Read
+                    </Button>
+                  </div>
+                  {allAlerts.map((alert) => (
+                    <div
+                      key={alert._id}
+                      className={`p-4 rounded-lg border ${
+                        alert.isRead ? "bg-muted/50" : "bg-background"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <Link
+                            to="/budgets/$budgetId"
+                            params={{ budgetId: alert.budgetId }}
+                            className="hover:underline"
+                            onClick={() => setAlertsOpen(false)}
+                          >
+                            <p className="text-sm font-medium">{alert.message}</p>
+                          </Link>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(alert.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {!alert.isRead && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => markAsRead({ id: alert._id as any })}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => removeAlert({ id: alert._id as any })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No alerts yet
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+          <Button asChild>
+            <Link to="/budgets/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Budget
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

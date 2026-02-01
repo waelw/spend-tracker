@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalQuery } from "./_generated/server"
 import { Doc } from "./_generated/dataModel"
 import { QueryCtx } from "./_generated/server"
 
@@ -722,5 +722,19 @@ export const getDailyBreakdown = query({
       initialBudget: effectiveTotalBudget, // Total budget including income
       totalIncome,
     }
+  },
+})
+
+export const internalComputeDailyLimitMetrics = internalQuery({
+  args: {
+    budgetId: v.id("budgets"),
+    clientToday: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const budget = await ctx.db.get(args.budgetId)
+    if (!budget) {
+      return null
+    }
+    return computeDailyLimitMetrics(ctx, budget, args.clientToday)
   },
 })

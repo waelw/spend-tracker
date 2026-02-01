@@ -79,4 +79,20 @@ export default defineSchema({
   })
     .index("by_budgetId", ["budgetId"])
     .index("by_budgetId_userId", ["budgetId", "userId"]),
+
+  alerts: defineTable({
+    userId: v.string(),
+    budgetId: v.id("budgets"),
+    type: v.union(
+      v.literal("overBudgetToday"),
+      v.literal("overBudgetThreshold"),
+      v.literal("budgetEndingSoon")
+    ),
+    message: v.string(),
+    isRead: v.boolean(),
+    createdAt: v.number(), // timestamp ms
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_isRead", ["userId", "isRead"])
+    .index("by_budgetId", ["budgetId"]),
 })

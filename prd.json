@@ -30,7 +30,7 @@
     },
     {
       "description": "Alerts / notifications: When daily spending exceeds a threshold (e.g. 80% or 100% of daily limit), create an in-app alert or notification. Optional schema: alerts table or userSettings (e.g. notify when remaining < X%). Delivery: in-app only (badge + Alerts view) first; optional later: Clerk/web push/email.",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Spending reports and analytics: Add spending-by-category chart (pie/bar) once categories exist. Add over-time comparison (e.g. week-over-week or month-over-month). Add budget comparison (e.g. total spent or daily average across budgets). Use existing getDailyBreakdown and expense queries; add Convex queries that aggregate by category or by week/month. Add Reports or Analytics section/tab on budget or dashboard.",
