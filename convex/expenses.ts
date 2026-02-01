@@ -45,6 +45,7 @@ export const add = mutation({
     currencyCode: v.string(),
     date: v.number(),
     description: v.optional(v.string()),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -100,6 +101,7 @@ export const add = mutation({
       currencyCode: args.currencyCode,
       date: args.date,
       description: args.description,
+      category: args.category,
     })
   },
 })
@@ -111,6 +113,7 @@ export const update = mutation({
     currencyCode: v.optional(v.string()),
     date: v.optional(v.number()),
     description: v.optional(v.string()),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()

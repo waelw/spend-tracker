@@ -18,3 +18,30 @@
 ### Files Changed
 - `convex/income.ts` - Added update mutation
 - `src/routes/budgets/$budgetId.tsx` - Enhanced IncomeRow component with edit functionality
+
+## 2026-02-01: Expense Categories Feature
+
+### Completed
+- Added optional `category` field to expenses schema in `convex/schema.ts`
+  - Added index `by_budgetId_category` for efficient category-based queries
+  - Default categories: Food, Transport, Entertainment, Shopping, Bills, Health, Education, Travel, Other
+
+- Updated `expenses.add` mutation in `convex/expenses.ts` to support category parameter
+
+- Updated `expenses.update` mutation in `convex/expenses.ts` to support category editing
+
+- Enhanced UI in `src/routes/budgets/$budgetId.tsx`:
+  - Added `EXPENSE_CATEGORIES` constant with predefined category options
+  - Added category dropdown in AddExpenseForm (between date and description fields)
+  - Enhanced ExpenseRow component with:
+    - Category display as a pill/badge in the table
+    - Full inline edit form with category selector
+    - Edit and delete buttons for each expense
+  - Added category filter dropdown in Expenses List header
+    - Filter by: All Categories, Uncategorized, or specific category
+  - Mobile-responsive: category shown inline with description on small screens
+
+### Files Changed
+- `convex/schema.ts` - Added category field and index to expenses table
+- `convex/expenses.ts` - Added category support to add and update mutations
+- `src/routes/budgets/$budgetId.tsx` - Added category UI (form, display, filter, inline edit)

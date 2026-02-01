@@ -2,7 +2,7 @@
   "tasks": [
     {
       "description": "Live exchange rates: Add optional 'refresh from API' for budget currencies. Keep manual rates as override. Use a free-tier API (e.g. exchangerate-api.io), store in budgetCurrencies or a small cache table. Implement as a Convex action (HTTP) that fetches rates for budget.mainCurrency and updates non-main budgetCurrencies via existing updateRate mutation. UI: 'Update rates' button per budget in the Currencies section. API key in Convex env (EXCHANGE_RATE_API_KEY). Optional: cache table with TTL (e.g. 1 hour) to reduce API calls.",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Edit income: Add income.update mutation in convex/income.ts (same pattern as expenses.update: optional amount, currencyCode, date, description). Add UI to edit income rows on the budget detail page (inline edit or modal), matching the existing expense edit flow.",
@@ -10,7 +10,7 @@
     },
     {
       "description": "Expense categories: Add optional category field to expenses in schema (e.g. Food, Transport, Entertainment). Add category dropdown or tags when adding/editing expenses. Add filter and group-by category on budget detail. Optional: same for income. Later: spending-by-category chart (pie/bar) and category breakdown in reports.",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Filter and search: Add filtering for expenses (and optionally income) by date range, category (when implemented), amount min/max, and description search. Implement via optional query args on listByBudget or new filtered query; keep list sortable. Expose filters in the budget detail page (Expenses section).",
