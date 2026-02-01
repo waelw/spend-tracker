@@ -62,4 +62,21 @@ export default defineSchema({
   })
     .index("by_budgetId", ["budgetId"])
     .index("by_budgetId_date", ["budgetId", "date"]),
+
+  recurringItems: defineTable({
+    budgetId: v.id("budgets"),
+    userId: v.string(),
+    type: v.union(v.literal("expense"), v.literal("income")),
+    amount: v.number(),
+    currencyCode: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()), // for expenses
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    startDate: v.number(), // timestamp ms - when to start generating entries
+    endDate: v.optional(v.number()), // timestamp ms - when to stop generating (optional)
+    lastGeneratedDate: v.optional(v.number()), // timestamp ms - last date for which an entry was created
+    paused: v.optional(v.boolean()), // whether the recurring item is paused
+  })
+    .index("by_budgetId", ["budgetId"])
+    .index("by_budgetId_userId", ["budgetId", "userId"]),
 })

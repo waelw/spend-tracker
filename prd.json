@@ -22,7 +22,7 @@
     },
     {
       "description": "Recurring expenses/income: Add schema for recurring templates (e.g. budgetId, amount, currencyCode, description, frequency: daily/weekly/monthly, startDate, endDate?). Add Convex scheduled function (cron) or mutation that creates expense/income entries from templates within the budget window. UI: 'Add recurring' flow and list of recurring items with edit/pause/delete.",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Budget copy / template: Add budgets.duplicate mutation (or 'create from template') that copies a budget (name, date range, totalAmount, mainCurrency), copies all budgetCurrencies, and optionally copies no/partial/full expenses and income. UI: 'Duplicate budget' or 'New from this budget' on dashboard or budget detail.",

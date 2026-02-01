@@ -17,6 +17,7 @@ import type * as expenses from "../expenses.js";
 import type * as exportData from "../exportData.js";
 import type * as income from "../income.js";
 import type * as migrations_migrateToAssets from "../migrations/migrateToAssets.js";
+import type * as recurringItems from "../recurringItems.js";
 
 import type {
   ApiFromModules,
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   exportData: typeof exportData;
   income: typeof income;
   "migrations/migrateToAssets": typeof migrations_migrateToAssets;
+  recurringItems: typeof recurringItems;
 }>;
 
 /**

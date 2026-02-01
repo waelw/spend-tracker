@@ -1,5 +1,50 @@
 # Progress Log
 
+## 2026-02-01: Recurring Expenses/Income Feature
+
+### Completed
+- Added `recurringItems` schema table in `convex/schema.ts`:
+  - Fields: budgetId, userId, type (expense/income), amount, currencyCode, description, category (for expenses), frequency (daily/weekly/monthly), startDate, endDate (optional), lastGeneratedDate (optional), paused (optional)
+  - Indexes: by_budgetId, by_budgetId_userId
+
+- Created `convex/recurringItems.ts` with full CRUD operations:
+  - `listByBudget` - Query all recurring items for a budget
+  - `add` - Create new recurring item with validation
+  - `update` - Edit recurring item details and pause/resume
+  - `remove` - Delete recurring item
+  - `generateEntriesFromTemplates` - Internal mutation (cron job) that creates expense/income entries from templates:
+    - Runs daily at 00:00 UTC
+    - Generates entries for each day based on frequency (daily/weekly/monthly)
+    - Handles asset balance updates (deduct for expenses, add for income)
+    - Tracks lastGeneratedDate to avoid duplicates
+    - Respects endDate and paused status
+    - Handles errors gracefully with try-catch
+
+- Updated `convex/crons.ts` to run recurring item generation daily:
+  - Cron job runs at 00:00 UTC (start of day)
+  - Calls internal.recurringItems.generateEntriesFromTemplates
+
+- Updated UI in `src/routes/budgets/$budgetId.tsx`:
+  - Added new icons: Repeat, Pause, Play
+  - Added Recurring Items card section after Income list
+  - Created `AddRecurringItemDialog` component:
+    - Full form to add recurring expense or income
+    - Fields: type, amount, currency, description, category (for expenses), frequency, start date, end date (optional)
+    - Form validation (amount > 0, end date after start date)
+    - Error handling and loading states
+  - Created `RecurringItemRow` component:
+    - Displays recurring item details (type, amount, frequency, paused status, dates)
+    - Inline edit form matching existing expense/income patterns
+    - Pause/resume toggle button with Play/Pause icons
+    - Edit and delete buttons
+    - Visual distinction for paused items (dimmed opacity)
+
+### Files Changed
+- `convex/schema.ts` - Added recurringItems table and indexes
+- `convex/recurringItems.ts` - New file with recurring items CRUD and cron job
+- `convex/crons.ts` - Added daily cron job for recurring item generation
+- `src/routes/budgets/$budgetId.tsx` - Added Recurring Items section with full UI
+
 ## 2026-02-01: CSV Export Feature
 
 ### Completed

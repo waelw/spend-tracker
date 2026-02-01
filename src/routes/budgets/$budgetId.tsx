@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { useState, useRef } from "react"
 import { format } from "date-fns"
-import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX, Download } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX, Download, Repeat, Pause, Play } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Parse date string as local time (not UTC)
@@ -126,6 +126,9 @@ function BudgetDetail() {
     budgetId: budgetId as Id<"budgets">,
   })
   const transfers = useQuery(api.budgetAssets.listTransfers, {
+    budgetId: budgetId as Id<"budgets">,
+  })
+  const recurringItems = useQuery(api.recurringItems.listByBudget, {
     budgetId: budgetId as Id<"budgets">,
   })
   const expenses = useQuery(api.expenses.listByBudget, {
@@ -903,6 +906,39 @@ function BudgetDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Recurring Items */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Repeat className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Recurring Items</CardTitle>
+                <CardDescription>Automatic expenses and income that repeat on a schedule</CardDescription>
+              </div>
+            </div>
+            <AddRecurringItemDialog budgetId={budgetId as Id<"budgets">} currencies={currencies || []} />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recurringItems && recurringItems.length > 0 ? (
+            <div className="space-y-3">
+              {recurringItems.map((item) => (
+                <RecurringItemRow
+                  key={item._id}
+                  item={item}
+                  currencies={currencies || []}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">
+              No recurring items set up yet
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Expenses List */}
       <Card>
@@ -2267,5 +2303,486 @@ function TransferDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function AddRecurringItemDialog({
+  budgetId,
+  currencies,
+}: {
+  budgetId: Id<"budgets">
+  currencies: { currencyCode: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [type, setType] = useState<"expense" | "income">("expense")
+  const [amount, setAmount] = useState("")
+  const [currencyCode, setCurrencyCode] = useState(currencies[0]?.currencyCode || "")
+  const [description, setDescription] = useState("")
+  const [category, setCategory] = useState("")
+  const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("monthly")
+  const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [endDate, setEndDate] = useState("")
+  const [isAdding, setIsAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const addRecurringItemMutation = useMutation(api.recurringItems.add)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    const amountNum = parseFloat(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError("Amount must be greater than 0")
+      return
+    }
+    setIsAdding(true)
+    try {
+      await addRecurringItemMutation({
+        budgetId,
+        type,
+        amount: amountNum,
+        currencyCode,
+        description: description || undefined,
+        category: type === "expense" ? (category || undefined) : undefined,
+        frequency,
+        startDate: parseLocalDate(startDate).getTime(),
+        endDate: endDate ? parseLocalDate(endDate).getTime() : undefined,
+      })
+      setOpen(false)
+      setAmount("")
+      setDescription("")
+      setCategory("")
+      setEndDate("")
+      setStartDate(format(new Date(), "yyyy-MM-dd"))
+    } catch (err) {
+      console.error("Failed to add recurring item:", err)
+      setError(err instanceof Error ? err.message : "Failed to add recurring item")
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  if (currencies.length > 0 && !currencies.find((c) => c.currencyCode === currencyCode)) {
+    setCurrencyCode(currencies[0].currencyCode)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="mr-2 h-4 w-4" />
+          Add Recurring
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Recurring {type === "expense" ? "Expense" : "Income"}</DialogTitle>
+          <DialogDescription>
+            Create an automatic {type === "expense" ? "expense" : "income"} that repeats on a schedule
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {error}
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select value={type} onValueChange={(value: "expense" | "income") => setType(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="recurring-amount">Amount</Label>
+              <Input
+                id="recurring-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recurring-currency">Currency</Label>
+              <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                <SelectTrigger id="recurring-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((c) => (
+                    <SelectItem key={c.currencyCode} value={c.currencyCode}>
+                      {c.currencyCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="recurring-description">Description (optional)</Label>
+            <Input
+              id="recurring-description"
+              placeholder="e.g., Rent, Salary"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          {type === "expense" && (
+            <div className="space-y-2">
+              <Label htmlFor="recurring-category">Category (optional)</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="recurring-category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Frequency</Label>
+            <Select value={frequency} onValueChange={(value: "daily" | "weekly" | "monthly") => setFrequency(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="recurring-start">Start Date</Label>
+              <Input
+                id="recurring-start"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recurring-end">End Date (optional)</Label>
+              <Input
+                id="recurring-end"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isAdding || currencies.length === 0}>
+              {isAdding ? "Adding..." : "Add Recurring"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function RecurringItemRow({
+  item,
+  currencies,
+}: {
+  item: {
+    _id: Id<"recurringItems">
+    type: "expense" | "income"
+    amount: number
+    currencyCode: string
+    description?: string
+    category?: string
+    frequency: "daily" | "weekly" | "monthly"
+    startDate: number
+    endDate?: number
+    paused?: boolean
+  }
+  currencies: { currencyCode: string }[]
+}) {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editAmount, setEditAmount] = useState(item.amount.toString())
+  const [editCurrency, setEditCurrency] = useState(item.currencyCode)
+  const [editDescription, setEditDescription] = useState(item.description || "")
+  const [editCategory, setEditCategory] = useState(item.category || "")
+  const [editFrequency, setEditFrequency] = useState(item.frequency)
+  const [editStartDate, setEditStartDate] = useState(format(new Date(item.startDate), "yyyy-MM-dd"))
+  const [editEndDate, setEditEndDate] = useState(item.endDate ? format(new Date(item.endDate), "yyyy-MM-dd") : "")
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteRecurringItemMutation = useMutation(api.recurringItems.remove)
+  const updateRecurringItemMutation = useMutation(api.recurringItems.update)
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteRecurringItemMutation({ id: item._id })
+    } catch (error) {
+      console.error("Failed to delete recurring item:", error)
+      setIsDeleting(false)
+    }
+  }
+
+  const handleTogglePaused = async () => {
+    setIsUpdating(true)
+    try {
+      await updateRecurringItemMutation({ id: item._id, paused: !item.paused })
+    } catch (error) {
+      console.error("Failed to toggle paused state:", error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleStartEdit = () => {
+    setEditAmount(item.amount.toString())
+    setEditCurrency(item.currencyCode)
+    setEditDescription(item.description || "")
+    setEditCategory(item.category || "")
+    setEditFrequency(item.frequency)
+    setEditStartDate(format(new Date(item.startDate), "yyyy-MM-dd"))
+    setEditEndDate(item.endDate ? format(new Date(item.endDate), "yyyy-MM-dd") : "")
+    setError(null)
+    setIsEditing(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setError(null)
+  }
+
+  const handleSaveEdit = async () => {
+    setError(null)
+    const amountNum = parseFloat(editAmount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError("Amount must be greater than 0")
+      return
+    }
+
+    setIsUpdating(true)
+    try {
+      await updateRecurringItemMutation({
+        id: item._id,
+        amount: amountNum,
+        currencyCode: editCurrency,
+        description: editDescription || undefined,
+        category: item.type === "expense" ? (editCategory || undefined) : undefined,
+        frequency: editFrequency,
+        startDate: parseLocalDate(editStartDate).getTime(),
+        endDate: editEndDate ? parseLocalDate(editEndDate).getTime() : undefined,
+      })
+      setIsEditing(false)
+    } catch (err) {
+      console.error("Failed to update recurring item:", err)
+      setError(err instanceof Error ? err.message : "Failed to update recurring item")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+        {error && (
+          <div className="p-2 text-sm text-destructive bg-destructive/10 rounded-md">
+            {error}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Amount</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Currency</Label>
+            <Select value={editCurrency} onValueChange={setEditCurrency}>
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((c) => (
+                  <SelectItem key={c.currencyCode} value={c.currencyCode}>
+                    {c.currencyCode}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Description</Label>
+          <Input
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            placeholder="Optional"
+            className="h-8"
+          />
+        </div>
+        {item.type === "expense" && (
+          <div className="space-y-1">
+            <Label className="text-xs">Category</Label>
+            <Select value={editCategory} onValueChange={setEditCategory}>
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Frequency</Label>
+            <Select value={editFrequency} onValueChange={(v: "daily" | "weekly" | "monthly") => setEditFrequency(v)}>
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Start Date</Label>
+            <Input
+              type="date"
+              value={editStartDate}
+              onChange={(e) => setEditStartDate(e.target.value)}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">End Date (optional)</Label>
+            <Input
+              type="date"
+              value={editEndDate}
+              onChange={(e) => setEditEndDate(e.target.value)}
+              min={editStartDate}
+              className="h-8"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancelEdit}
+            disabled={isUpdating}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSaveEdit}
+            disabled={isUpdating}
+          >
+            <Check className="h-4 w-4 mr-1" />
+            {isUpdating ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`p-4 border rounded-lg ${item.paused ? "bg-muted/30 opacity-60" : ""}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-sm font-medium ${item.type === "income" ? "text-green-600" : ""}`}>
+              {item.type === "expense" ? "-" : "+"}{formatCurrency(item.amount, item.currencyCode)}
+            </span>
+            <span className="text-xs bg-secondary px-2 py-0.5 rounded capitalize">
+              {item.frequency}
+            </span>
+            {item.paused && (
+              <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                Paused
+              </span>
+            )}
+          </div>
+          {item.description && (
+            <p className="text-sm">{item.description}</p>
+          )}
+          {item.type === "expense" && item.category && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+              {item.category}
+            </span>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Starts: {format(new Date(item.startDate), "MMM d, yyyy")}
+            {item.endDate && ` • Ends: ${format(new Date(item.endDate), "MMM d, yyyy")}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleTogglePaused}
+            title={item.paused ? "Resume" : "Pause"}
+            disabled={isUpdating}
+          >
+            {item.paused ? (
+              <Play className="h-4 w-4" />
+            ) : (
+              <Pause className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleStartEdit}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
