@@ -46,9 +46,11 @@ export default defineSchema({
     currencyCode: v.string(),
     date: v.number(), // timestamp ms
     description: v.optional(v.string()),
+    category: v.optional(v.string()), // e.g., Food, Transport, Entertainment
   })
     .index("by_budgetId", ["budgetId"])
-    .index("by_budgetId_date", ["budgetId", "date"]),
+    .index("by_budgetId_date", ["budgetId", "date"])
+    .index("by_budgetId_category", ["budgetId", "category"]),
 
   income: defineTable({
     budgetId: v.id("budgets"),

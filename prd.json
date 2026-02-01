@@ -1,0 +1,144 @@
+{
+  "tasks": [
+    {
+      "description": "Live exchange rates: Add optional 'refresh from API' for budget currencies. Keep manual rates as override. Use a free-tier API (e.g. exchangerate-api.io), store in budgetCurrencies or a small cache table. Implement as a Convex action (HTTP) that fetches rates for budget.mainCurrency and updates non-main budgetCurrencies via existing updateRate mutation. UI: 'Update rates' button per budget in the Currencies section. API key in Convex env (EXCHANGE_RATE_API_KEY). Optional: cache table with TTL (e.g. 1 hour) to reduce API calls.",
+      "completed": false
+    },
+    {
+      "description": "Edit income: Add income.update mutation in convex/income.ts (same pattern as expenses.update: optional amount, currencyCode, date, description). Add UI to edit income rows on the budget detail page (inline edit or modal), matching the existing expense edit flow.",
+      "completed": true
+    },
+    {
+      "description": "Expense categories: Add optional category field to expenses in schema (e.g. Food, Transport, Entertainment). Add category dropdown or tags when adding/editing expenses. Add filter and group-by category on budget detail. Optional: same for income. Later: spending-by-category chart (pie/bar) and category breakdown in reports.",
+      "completed": false
+    },
+    {
+      "description": "Filter and search: Add filtering for expenses (and optionally income) by date range, category (when implemented), amount min/max, and description search. Implement via optional query args on listByBudget or new filtered query; keep list sortable. Expose filters in the budget detail page (Expenses section).",
+      "completed": false
+    },
+    {
+      "description": "Export: Add CSV export of expenses (and income) for a budget, with optional date range. Columns: date, amount, currency, description, category (if implemented). Implement as Convex query returning data + frontend 'Download CSV' button, or server action. Optional: PDF summary (totals, daily limit, top expenses).",
+      "completed": false
+    },
+    {
+      "description": "Recurring expenses/income: Add schema for recurring templates (e.g. budgetId, amount, currencyCode, description, frequency: daily/weekly/monthly, startDate, endDate?). Add Convex scheduled function (cron) or mutation that creates expense/income entries from templates within the budget window. UI: 'Add recurring' flow and list of recurring items with edit/pause/delete.",
+      "completed": false
+    },
+    {
+      "description": "Budget copy / template: Add budgets.duplicate mutation (or 'create from template') that copies a budget (name, date range, totalAmount, mainCurrency), copies all budgetCurrencies, and optionally copies no/partial/full expenses and income. UI: 'Duplicate budget' or 'New from this budget' on dashboard or budget detail.",
+      "completed": false
+    },
+    {
+      "description": "Alerts / notifications: When daily spending exceeds a threshold (e.g. 80% or 100% of daily limit), create an in-app alert or notification. Optional schema: alerts table or userSettings (e.g. notify when remaining < X%). Delivery: in-app only (badge + Alerts view) first; optional later: Clerk/web push/email.",
+      "completed": false
+    },
+    {
+      "description": "Spending reports and analytics: Add spending-by-category chart (pie/bar) once categories exist. Add over-time comparison (e.g. week-over-week or month-over-month). Add budget comparison (e.g. total spent or daily average across budgets). Use existing getDailyBreakdown and expense queries; add Convex queries that aggregate by category or by week/month. Add Reports or Analytics section/tab on budget or dashboard.",
+      "completed": false
+    },
+    {
+      "description": "Shared / household budgets: Add schema (e.g. budgetMembers: budgetId, userId, role: owner/editor/viewer). Allow budget to have multiple members; all budget/expense/income mutations check membership and role instead of only budget.userId. UI: 'Share budget' (invite by email), member list, optional permission toggles.",
+      "completed": false
+    },
+    {
+      "description": "Bulk import: Add CSV import for expenses (and optionally income). Parse CSV (date, amount, currency, description, optional category), map columns in UI, preview, then call expenses.add (and income.add) in batch or via Convex action for large files. UI: 'Import' on budget detail with upload and column mapping.",
+      "completed": false
+    },
+    {
+      "description": "Savings / goals: Add schema for goals (e.g. budgetId, name, targetAmount, savedAmount or derived from savings category). Track saved vs spent (e.g. via category or separate savings entries). UI: goals list and progress bars on budget or dashboard.",
+      "completed": false
+    },
+    {
+      "description": "'Needs attention' block on home screen: Add a section (card or list) shown when something needs attention. Content: budgets over today's limit (name, link, amount over); budgets ending in next 3–7 days (name, link, end date). Data from getDashboardSummary or list + getDailyLimit. Hide when nothing needs attention.",
+      "completed": false
+    },
+    {
+      "description": "Recent activity on home screen: Add 'Recent activity' card showing last 5–10 expenses across all budgets (date, amount, description, budget name), each linking to that budget. New Convex query expenses.listRecentByUser({ limit }) that returns expenses with budget name/mainCurrency, ordered by date desc, scoped by userId.",
+      "completed": false
+    },
+    {
+      "description": "Quick add expense from home: Add 'Log expense' or 'Add expense' button on home screen that opens a modal or route to pick budget then amount/currency/date/description; or if only one active budget (date range includes today), skip budget selection. Use existing budgets.list and expenses.add.",
+      "completed": false
+    },
+    {
+      "description": "Upcoming / calendar teaser on home: Add 'Upcoming' card listing budgets that start or end in the next 14 days (e.g. 'Starts Jan 15', 'Ends Jan 20') with links. Data from budgets.list + client today; no new backend.",
+      "completed": false
+    },
+    {
+      "description": "Mini chart on home screen: Add a small chart (e.g. 'Spent in last 7 days' bar/line, or 'Spending by budget' pie/bar) on the home page. Requires new Convex query for daily totals across budgets (last 7 days) or reuse per-budget getDailyBreakdown and aggregate on client. Use Recharts like budget detail page.",
+      "completed": false
+    },
+    {
+      "description": "Richer empty state: When user has no budgets, replace current empty state with a short 'How it works' (e.g. create budget → set dates and total → add expenses → see daily limit), 3 steps with icons, and clear CTA to 'Create your first budget'. No new backend.",
+      "completed": false
+    },
+    {
+      "description": "Budget archive: Add optional isArchived (or archivedAt) to budgets schema. Allow archiving past budgets so they are hidden from the main list but data is kept. UI: 'Archive' on budget detail; 'View archived' toggle or separate page on dashboard to list and restore archived budgets.",
+      "completed": false
+    },
+    {
+      "description": "Budget notes: Add optional notes field (v.optional(v.string())) to budgets schema. UI: editable notes section on budget detail (e.g. 'Trip to Paris', 'Reminder: pay rent on 1st'). Use existing budgets.update to persist.",
+      "completed": false
+    },
+    {
+      "description": "Spending projection: Add a simple 'At current rate' prediction on budget detail: based on average daily spend so far, show 'You'll spend X by end date' or 'You'll have Y remaining'. Can be computed client-side from getDailyBreakdown + getDailyLimit or a small Convex query. Display in a compact card or under the progress bar.",
+      "completed": false
+    },
+    {
+      "description": "Category spending limits: When expense categories exist, add optional per-category limits within a budget (e.g. Food: 200, Transport: 100). Schema: categoryLimits table or JSON field on budget. UI: set limits per category; show progress (spent vs limit) per category on budget detail.",
+      "completed": false
+    },
+    {
+      "description": "Global search: Add search across all budgets for expense/income description or amount. New Convex query (e.g. searchExpenses({ query, limit })) that searches description (and optionally amount) across user's budgets, returns matching expenses with budget name and link. UI: search input in header or on home that opens results dropdown or dedicated search page.",
+      "completed": false
+    },
+    {
+      "description": "Budget comparison view: Add a view (page or modal) to compare two budgets side-by-side: total spent, daily average, progress %, days left, main currency. User selects two budgets from dropdowns. Data from existing getDailyLimit/getDailyBreakdown per budget; layout: two columns with summary cards each.",
+      "completed": false
+    },
+    {
+      "description": "Daily / weekly / monthly view: On budget detail, add toggle or tabs to view expenses aggregated by day, week, or month (e.g. 'This week: 150 spent', bar chart by week). Convex: optional aggregation query or derive from existing listByBudget + client grouping. Reuse existing chart components.",
+      "completed": false
+    },
+    {
+      "description": "Undo or soft delete: For expenses and income, add soft delete (deletedAt timestamp) or a short undo window after delete (e.g. toast 'Expense deleted' with 'Undo' that re-inserts). If soft delete: add 'Recently deleted' section to restore; optional cleanup job to hard-delete after 30 days.",
+      "completed": false
+    },
+    {
+      "description": "Keyboard shortcuts: Add shortcuts for power users: e.g. N or Ctrl+N for new expense (when on budget detail), G then H for home, / for focus search (when implemented). Use a small hook or global listener; document in a 'Shortcuts' help tooltip or settings.",
+      "completed": false
+    },
+    {
+      "description": "PWA / installable app: Add web app manifest (name, icons, theme) and service worker for installability and basic offline (e.g. cache static assets; show 'Offline' message when Convex unreachable). Ensure existing manifest/icons in public/ are referenced; optional Workbox or Vite PWA plugin.",
+      "completed": false
+    },
+    {
+      "description": "Full data backup and restore: Export all user data (budgets, currencies, expenses, income) as JSON for backup. Optional: 'Restore from backup' that creates budgets/expenses/income from JSON (with conflict handling or 'Import as new'). Convex: query to export; mutation or action to import. UI: Settings or profile page.",
+      "completed": false
+    },
+    {
+      "description": "Reminders: Optional 'Remind me to log expenses' (daily or weekly). Use browser notifications (Notification API) or in-app reminder list. Store preference in userSettings or localStorage; no backend required for client-only reminders, or add userSettings.reminderFrequency and a Convex cron that creates in-app reminders.",
+      "completed": false
+    },
+    {
+      "description": "Onboarding tour: First-time user tour (e.g. after sign-up or when budgets.length === 0): highlight 'Create budget', then 'Add expense', then 'View daily limit' with a simple step-by-step overlay or modal. Use a library (e.g. driver.js, intro.js) or custom component; dismiss and set 'tour completed' in localStorage or userSettings.",
+      "completed": false
+    },
+    {
+      "description": "Accessibility audit and fixes: Audit and improve a11y: focus order, aria-labels on icon buttons, sufficient contrast, screen reader support for charts (e.g. aria-label or table fallback), skip link, and keyboard navigation for lists/dialogs. Fix any issues reported by axe or Lighthouse.",
+      "completed": false
+    },
+    {
+      "description": "Internationalization (i18n): Add i18n for UI strings (e.g. react-i18next or Paraglide) and locale-aware date/currency formatting. Support at least two locales (e.g. en, ar or fr). Store user locale in profile or localStorage; format dates and numbers with Intl and translated labels.",
+      "completed": false
+    },
+    {
+      "description": "Budget templates: Predefined budget templates (e.g. 'Monthly groceries', 'Weekend trip', 'Monthly rent') with suggested name, duration, total amount placeholder, and optional categories. UI: on 'New budget', offer 'Start from template' with template list; pre-fill form; no new table required if templates are static config.",
+      "completed": false
+    },
+    {
+      "description": "Mobile bottom navigation: On small screens, add a bottom nav (Home, New expense quick action, Budgets or list) for thumb-friendly access. Optionally hide or collapse top header elements; keep critical actions (new budget, new expense) one tap away.",
+      "completed": false
+    }
+  ]
+}
