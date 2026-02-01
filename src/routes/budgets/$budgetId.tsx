@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { useState, useRef } from "react"
 import { format } from "date-fns"
-import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX, Download } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Parse date string as local time (not UTC)
@@ -804,14 +804,17 @@ function BudgetDetail() {
                   <CardDescription>Additional funds added to this budget</CardDescription>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowIncomeFilters(!showIncomeFilters)}
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                Filters
-              </Button>
+              <div className="flex items-center gap-2">
+                <ExportCsvButton budgetId={budgetId as Id<"budgets">} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowIncomeFilters(!showIncomeFilters)}
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filters
+                </Button>
+              </div>
             </div>
             {showIncomeFilters && (
               <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-4">
@@ -904,38 +907,39 @@ function BudgetDetail() {
       {/* Expenses List */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <CardTitle>Expenses</CardTitle>
-              <CardDescription>All expenses for this budget</CardDescription>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <CardTitle>Expenses</CardTitle>
+                <CardDescription>All expenses for this budget</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <ExportCsvButton budgetId={budgetId as Id<"budgets">} />
+                {expenses && expenses.length > 0 && (
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                      {EXPENSE_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowExpenseFilters(!showExpenseFilters)}
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filters
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {expenses && expenses.length > 0 && (
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Filter by category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                    {EXPENSE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowExpenseFilters(!showExpenseFilters)}
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                Filters
-              </Button>
-            </div>
-          </div>
           {showExpenseFilters && (
             <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-4">
               <div className="flex items-center justify-between">
@@ -2041,6 +2045,60 @@ function IncomeRow({
         </div>
       </TableCell>
     </TableRow>
+  )
+}
+
+function ExportCsvButton({
+  budgetId,
+}: {
+  budgetId: Id<"budgets">
+}) {
+  const [isExporting, setIsExporting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const exportAction = useAction(api.exportData.exportToCsv)
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    setError(null)
+
+    try {
+      const result = await exportAction({ budgetId })
+
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = result.filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to export CSV:", err)
+      setError(err instanceof Error ? err.message : "Failed to export CSV")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleExport}
+        disabled={isExporting}
+      >
+        <Download className={`mr-2 h-4 w-4 ${isExporting ? "animate-pulse" : ""}`} />
+        {isExporting ? "Exporting..." : "Export CSV"}
+      </Button>
+      {error && (
+        <div className="absolute top-full right-0 mt-2 p-2 rounded-md text-sm whitespace-nowrap z-10 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          {error}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -18,7 +18,7 @@
     },
     {
       "description": "Export: Add CSV export of expenses (and income) for a budget, with optional date range. Columns: date, amount, currency, description, category (if implemented). Implement as Convex query returning data + frontend 'Download CSV' button, or server action. Optional: PDF summary (totals, daily limit, top expenses).",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Recurring expenses/income: Add schema for recurring templates (e.g. budgetId, amount, currencyCode, description, frequency: daily/weekly/monthly, startDate, endDate?). Add Convex scheduled function (cron) or mutation that creates expense/income entries from templates within the budget window. UI: 'Add recurring' flow and list of recurring items with edit/pause/delete.",

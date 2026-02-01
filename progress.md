@@ -1,5 +1,33 @@
 # Progress Log
 
+## 2026-02-01: CSV Export Feature
+
+### Completed
+- Added CSV export functionality for expenses and income:
+  - Created `convex/exportData.ts` with export action:
+    - `getExpensesInternal` - Internal query for filtered expenses
+    - `getIncomeInternal` - Internal query for filtered income
+    - `getBudgetInternal` - Internal query for budget verification
+    - `exportToCsv` - Action that generates CSV with columns: Type, Date, Amount, Currency, Description, Category
+  - CSV includes both expenses and income sorted by date (newest first)
+  - Filename includes budget name and optional date range
+
+- Updated UI in `src/routes/budgets/$budgetId.tsx`:
+  - Added `Download` icon from lucide-react
+  - Created `ExportCsvButton` component:
+    - Uses Convex action to generate CSV
+    - Creates Blob and triggers file download in browser
+    - Shows loading state while exporting
+    - Error handling with user-friendly messages
+  - Added "Export CSV" button to Income section header
+  - Added "Export CSV" button to Expenses section header
+
+### Files Changed
+- `convex/exportData.ts` - New file with CSV export action and internal queries
+- `src/routes/budgets/$budgetId.tsx` - Added ExportCsvButton component and UI integration
+
+
+
 ## 2026-02-01: Edit Income Feature
 
 ### Completed

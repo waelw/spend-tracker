@@ -14,6 +14,7 @@ import type * as budgets from "../budgets.js";
 import type * as crons from "../crons.js";
 import type * as currencyRates from "../currencyRates.js";
 import type * as expenses from "../expenses.js";
+import type * as exportData from "../exportData.js";
 import type * as income from "../income.js";
 import type * as migrations_migrateToAssets from "../migrations/migrateToAssets.js";
 
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   currencyRates: typeof currencyRates;
   expenses: typeof expenses;
+  exportData: typeof exportData;
   income: typeof income;
   "migrations/migrateToAssets": typeof migrations_migrateToAssets;
 }>;
