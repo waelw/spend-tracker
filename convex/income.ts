@@ -5,6 +5,11 @@ import { startOfDay } from "date-fns"
 export const listByBudget = query({
   args: {
     budgetId: v.id("budgets"),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    minAmount: v.optional(v.number()),
+    maxAmount: v.optional(v.number()),
+    search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -21,7 +26,33 @@ export const listByBudget = query({
       .withIndex("by_budgetId", (q) => q.eq("budgetId", args.budgetId))
       .collect()
 
-    return incomeEntries.sort((a, b) => b.date - a.date)
+    let filtered = incomeEntries
+
+    // Date range filter
+    if (args.startDate !== undefined && args.endDate !== undefined) {
+      filtered = filtered.filter(
+        (inc) => inc.date >= args.startDate! && inc.date <= args.endDate!
+      )
+    }
+
+    // Amount filters
+    if (args.minAmount !== undefined) {
+      filtered = filtered.filter((inc) => inc.amount >= args.minAmount!)
+    }
+    if (args.maxAmount !== undefined) {
+      filtered = filtered.filter((inc) => inc.amount <= args.maxAmount!)
+    }
+
+    // Description search (case-insensitive)
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase()
+      filtered = filtered.filter((inc) => {
+        const desc = inc.description || ""
+        return desc.toLowerCase().includes(searchLower)
+      })
+    }
+
+    return filtered.sort((a, b) => b.date - a.date)
   },
 })
 

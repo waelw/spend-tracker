@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { useState, useRef } from "react"
 import { format } from "date-fns"
-import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, Edit2, Calendar, TrendingUp, TrendingDown, DollarSign, Check, X, RefreshCw, ArrowRightLeft, Wallet, Filter, FilterX } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Parse date string as local time (not UTC)
@@ -97,6 +97,22 @@ function BudgetDetail() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [showExpenseFilters, setShowExpenseFilters] = useState(false)
+  const [expenseFilters, setExpenseFilters] = useState({
+    startDate: "",
+    endDate: "",
+    minAmount: "",
+    maxAmount: "",
+    search: "",
+  })
+  const [showIncomeFilters, setShowIncomeFilters] = useState(false)
+  const [incomeFilters, setIncomeFilters] = useState({
+    startDate: "",
+    endDate: "",
+    minAmount: "",
+    maxAmount: "",
+    search: "",
+  })
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   const clientToday = getTodayTimestamp()
@@ -112,8 +128,31 @@ function BudgetDetail() {
   const transfers = useQuery(api.budgetAssets.listTransfers, {
     budgetId: budgetId as Id<"budgets">,
   })
-  const expenses = useQuery(api.expenses.listByBudget, { budgetId: budgetId as Id<"budgets"> })
-  const incomeList = useQuery(api.income.listByBudget, { budgetId: budgetId as Id<"budgets"> })
+  const expenses = useQuery(api.expenses.listByBudget, {
+    budgetId: budgetId as Id<"budgets">,
+    category: categoryFilter === "all" ? undefined : categoryFilter === "uncategorized" ? "" : categoryFilter,
+    startDate: expenseFilters.startDate ? parseLocalDate(expenseFilters.startDate).getTime() : undefined,
+    endDate: expenseFilters.endDate ? (() => {
+      const date = new Date(expenseFilters.endDate)
+      date.setHours(23, 59, 59, 999)
+      return date.getTime()
+    })() : undefined,
+    minAmount: expenseFilters.minAmount ? parseFloat(expenseFilters.minAmount) : undefined,
+    maxAmount: expenseFilters.maxAmount ? parseFloat(expenseFilters.maxAmount) : undefined,
+    search: expenseFilters.search || undefined,
+  })
+  const incomeList = useQuery(api.income.listByBudget, {
+    budgetId: budgetId as Id<"budgets">,
+    startDate: incomeFilters.startDate ? parseLocalDate(incomeFilters.startDate).getTime() : undefined,
+    endDate: incomeFilters.endDate ? (() => {
+      const date = new Date(incomeFilters.endDate)
+      date.setHours(23, 59, 59, 999)
+      return date.getTime()
+    })() : undefined,
+    minAmount: incomeFilters.minAmount ? parseFloat(incomeFilters.minAmount) : undefined,
+    maxAmount: incomeFilters.maxAmount ? parseFloat(incomeFilters.maxAmount) : undefined,
+    search: incomeFilters.search || undefined,
+  })
 
   const deleteBudgetMutation = useMutation(api.budgets.remove)
   const updateBudgetMutation = useMutation(api.budgets.update)
@@ -757,13 +796,90 @@ function BudgetDetail() {
       {incomeList && incomeList.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              <div>
-                <CardTitle>Income</CardTitle>
-                <CardDescription>Additional funds added to this budget</CardDescription>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                <div>
+                  <CardTitle>Income</CardTitle>
+                  <CardDescription>Additional funds added to this budget</CardDescription>
+                </div>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowIncomeFilters(!showIncomeFilters)}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+              </Button>
             </div>
+            {showIncomeFilters && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Advanced Filters</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIncomeFilters({ startDate: "", endDate: "", minAmount: "", maxAmount: "", search: "" })
+                    }}
+                    className="text-xs"
+                  >
+                    <FilterX className="mr-1 h-3 w-3" />
+                    Clear All
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="search-income">Search Description</Label>
+                    <Input
+                      id="search-income"
+                      placeholder="e.g., salary, bonus"
+                      value={incomeFilters.search}
+                      onChange={(e) => setIncomeFilters({ ...incomeFilters, search: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date Range</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={incomeFilters.startDate}
+                        onChange={(e) => setIncomeFilters({ ...incomeFilters, startDate: e.target.value })}
+                        placeholder="From"
+                      />
+                      <Input
+                        type="date"
+                        value={incomeFilters.endDate}
+                        onChange={(e) => setIncomeFilters({ ...incomeFilters, endDate: e.target.value })}
+                        placeholder="To"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount Range</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Min"
+                        value={incomeFilters.minAmount}
+                        onChange={(e) => setIncomeFilters({ ...incomeFilters, minAmount: e.target.value })}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Max"
+                        value={incomeFilters.maxAmount}
+                        onChange={(e) => setIncomeFilters({ ...incomeFilters, maxAmount: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <Table>
@@ -788,61 +904,124 @@ function BudgetDetail() {
       {/* Expenses List */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <CardTitle>Expenses</CardTitle>
               <CardDescription>All expenses for this budget</CardDescription>
             </div>
-            {expenses && expenses.length > 0 && (
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="flex items-center gap-2">
+              {expenses && expenses.length > 0 && (
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter by category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExpenseFilters(!showExpenseFilters)}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+              </Button>
+            </div>
           </div>
+          {showExpenseFilters && (
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Advanced Filters</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setExpenseFilters({ startDate: "", endDate: "", minAmount: "", maxAmount: "", search: "" })
+                  }}
+                  className="text-xs"
+                >
+                  <FilterX className="mr-1 h-3 w-3" />
+                  Clear All
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="search-expense">Search Description</Label>
+                  <Input
+                    id="search-expense"
+                    placeholder="e.g., grocery, coffee"
+                    value={expenseFilters.search}
+                    onChange={(e) => setExpenseFilters({ ...expenseFilters, search: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date Range</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={expenseFilters.startDate}
+                      onChange={(e) => setExpenseFilters({ ...expenseFilters, startDate: e.target.value })}
+                      placeholder="From"
+                    />
+                    <Input
+                      type="date"
+                      value={expenseFilters.endDate}
+                      onChange={(e) => setExpenseFilters({ ...expenseFilters, endDate: e.target.value })}
+                      placeholder="To"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount Range</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Min"
+                      value={expenseFilters.minAmount}
+                      onChange={(e) => setExpenseFilters({ ...expenseFilters, minAmount: e.target.value })}
+                    />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Max"
+                      value={expenseFilters.maxAmount}
+                      onChange={(e) => setExpenseFilters({ ...expenseFilters, maxAmount: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {expenses && expenses.length > 0 ? (
-            (() => {
-              const filteredExpenses = categoryFilter === "all"
-                ? expenses
-                : categoryFilter === "uncategorized"
-                ? expenses.filter((e) => !e.category)
-                : expenses.filter((e) => e.category === categoryFilter)
-
-              return filteredExpenses.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[70px] sm:w-auto">Date</TableHead>
-                      <TableHead className="hidden sm:table-cell">Category</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[50px] sm:w-[80px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExpenses.map((expense) => (
-                      <ExpenseRow key={expense._id} expense={expense} currencies={currencies || []} />
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-center text-muted-foreground py-4">
-                  No expenses match the selected filter
-                </p>
-              )
-            })()
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[70px] sm:w-auto">Date</TableHead>
+                  <TableHead className="hidden sm:table-cell">Category</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-[50px] sm:w-[80px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenses.map((expense) => (
+                  <ExpenseRow key={expense._id} expense={expense} currencies={currencies || []} />
+                ))}
+              </TableBody>
+            </Table>
           ) : (
             <p className="text-center text-muted-foreground py-4">
               No expenses recorded yet

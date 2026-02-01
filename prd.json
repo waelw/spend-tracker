@@ -14,7 +14,7 @@
     },
     {
       "description": "Filter and search: Add filtering for expenses (and optionally income) by date range, category (when implemented), amount min/max, and description search. Implement via optional query args on listByBudget or new filtered query; keep list sortable. Expose filters in the budget detail page (Expenses section).",
-      "completed": false
+      "completed": true
     },
     {
       "description": "Export: Add CSV export of expenses (and income) for a budget, with optional date range. Columns: date, amount, currency, description, category (if implemented). Implement as Convex query returning data + frontend 'Download CSV' button, or server action. Optional: PDF summary (totals, daily limit, top expenses).",

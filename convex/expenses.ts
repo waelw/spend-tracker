@@ -6,6 +6,12 @@ export const listByBudget = query({
   args: {
     budgetId: v.id("budgets"),
     date: v.optional(v.number()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    category: v.optional(v.string()),
+    minAmount: v.optional(v.number()),
+    maxAmount: v.optional(v.number()),
+    search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -23,18 +29,50 @@ export const listByBudget = query({
 
     const expenses = await query.collect()
 
-    // If date filter is provided, filter by that date
-    if (args.date) {
+    let filtered = expenses
+
+    // Date range filter
+    if (args.startDate !== undefined && args.endDate !== undefined) {
+      filtered = filtered.filter(
+        (exp) => exp.date >= args.startDate! && exp.date <= args.endDate!
+      )
+    } else if (args.date) {
       const dayStart = new Date(args.date)
       dayStart.setHours(0, 0, 0, 0)
       const dayEnd = new Date(args.date)
       dayEnd.setHours(23, 59, 59, 999)
-      return expenses.filter(
+      filtered = filtered.filter(
         (exp) => exp.date >= dayStart.getTime() && exp.date <= dayEnd.getTime()
       )
     }
 
-    return expenses.sort((a, b) => b.date - a.date)
+    // Category filter (include uncategorized when category === "" or null)
+    if (args.category !== undefined) {
+      if (args.category === "") {
+        filtered = filtered.filter((exp) => !exp.category)
+      } else {
+        filtered = filtered.filter((exp) => exp.category === args.category)
+      }
+    }
+
+    // Amount filters
+    if (args.minAmount !== undefined) {
+      filtered = filtered.filter((exp) => exp.amount >= args.minAmount!)
+    }
+    if (args.maxAmount !== undefined) {
+      filtered = filtered.filter((exp) => exp.amount <= args.maxAmount!)
+    }
+
+    // Description search (case-insensitive)
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase()
+      filtered = filtered.filter((exp) => {
+        const desc = exp.description || ""
+        return desc.toLowerCase().includes(searchLower)
+      })
+    }
+
+    return filtered.sort((a, b) => b.date - a.date)
   },
 })
 
