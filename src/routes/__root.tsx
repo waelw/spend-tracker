@@ -145,21 +145,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <div className="max-w-7xl mx-auto flex h-14 items-center px-4 sm:px-6 lg:px-8">
-                <div className="mr-4 flex">
-                  <Link to="/" className="mr-6 flex items-center space-x-2">
-                    <span className="font-bold">Spend Tracker</span>
+                <div className="md:mr-4 mr-2 flex">
+                  <Link to="/" className="md:mr-6 mr-2 flex items-center space-x-2">
+                    <span className="font-bold text-xs md:text-base">Spend Tracker</span>
                   </Link>
-                  <nav className="flex items-center space-x-6 text-sm font-medium">
+                  <nav className="flex items-center space-x-2 md:space-x-6 text-sm font-medium">
                     <SignedIn>
                       <Link
                         to="/"
-                        className="transition-colors hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
+                        className="transition-colors text-xs md:text-base hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
                       >
                         Dashboard
                       </Link>
                       <Link
                         to="/budgets/new"
-                        className="transition-colors hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
+                        className="transition-colors text-xs md:text-base hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
                       >
                         New Budget
                       </Link>
@@ -173,7 +173,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                   </SignedIn>
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <Button variant="outline">Sign In</Button>
+                      <Button size="sm" variant="outline">Sign In</Button>
                     </SignInButton>
                   </SignedOut>
                 </div>

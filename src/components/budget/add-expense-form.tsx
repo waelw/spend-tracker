@@ -1,20 +1,20 @@
-import { useEffect } from "react"
-import { format } from "date-fns"
-import { useMutation } from "convex/react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { api } from "../../../convex/_generated/api"
-import type { Id } from "../../../convex/_generated/dataModel"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useEffect } from "react";
+import { format } from "date-fns";
+import { useMutation } from "convex/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -23,37 +23,44 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { formatCurrency } from "@/lib/currency-utils"
-import { parseLocalDate } from "@/lib/date-utils"
-import { EXPENSE_CATEGORIES } from "@/constants/categories"
+} from "@/components/ui/form";
+import { formatCurrency } from "@/lib/currency-utils";
+import { parseLocalDate } from "@/lib/date-utils";
+import { EXPENSE_CATEGORIES } from "@/constants/categories";
 
-const today = format(new Date(), "yyyy-MM-dd")
+const today = format(new Date(), "yyyy-MM-dd");
 
 const addExpenseSchema = z.object({
-  amount: z.string().min(1, "Amount is required").refine(
-    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
-    "Amount must be a positive number"
-  ),
+  amount: z
+    .string()
+    .min(1, "Amount is required")
+    .refine(
+      (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+      "Amount must be a positive number",
+    ),
   currencyCode: z.string().min(1, "Currency is required"),
-  date: z.string().min(1, "Date is required").refine(
-    (val) => val <= today,
-    "Cannot add expenses for future dates"
-  ),
+  date: z
+    .string()
+    .min(1, "Date is required")
+    .refine((val) => val <= today, "Cannot add expenses for future dates"),
   category: z.string().optional(),
   description: z.string().optional(),
-})
+});
 
-type AddExpenseFormValues = z.infer<typeof addExpenseSchema>
+type AddExpenseFormValues = z.infer<typeof addExpenseSchema>;
 
 interface AddExpenseFormProps {
-  budgetId: Id<"budgets">
-  currencies: { currencyCode: string }[]
-  assets: { currencyCode: string; amount: number }[]
+  budgetId: Id<"budgets">;
+  currencies: { currencyCode: string }[];
+  assets: { currencyCode: string; amount: number }[];
 }
 
-export function AddExpenseForm({ budgetId, currencies, assets }: AddExpenseFormProps) {
-  const addExpenseMutation = useMutation(api.expenses.add)
+export function AddExpenseForm({
+  budgetId,
+  currencies,
+  assets,
+}: AddExpenseFormProps) {
+  const addExpenseMutation = useMutation(api.expenses.add);
 
   const form = useForm<AddExpenseFormValues>({
     resolver: zodResolver(addExpenseSchema),
@@ -64,18 +71,21 @@ export function AddExpenseForm({ budgetId, currencies, assets }: AddExpenseFormP
       category: "",
       description: "",
     },
-  })
+  });
 
-  const selectedCurrency = form.watch("currencyCode")
-  const currentAsset = assets.find((a) => a.currencyCode === selectedCurrency)
-  const availableBalance = currentAsset?.amount ?? 0
+  const selectedCurrency = form.watch("currencyCode");
+  const currentAsset = assets.find((a) => a.currencyCode === selectedCurrency);
+  const availableBalance = currentAsset?.amount ?? 0;
 
   // Update currency when currencies list changes
   useEffect(() => {
-    if (currencies.length > 0 && !currencies.find((c) => c.currencyCode === selectedCurrency)) {
-      form.setValue("currencyCode", currencies[0].currencyCode)
+    if (
+      currencies.length > 0 &&
+      !currencies.find((c) => c.currencyCode === selectedCurrency)
+    ) {
+      form.setValue("currencyCode", currencies[0].currencyCode);
     }
-  }, [currencies, selectedCurrency, form])
+  }, [currencies, selectedCurrency, form]);
 
   const onSubmit = async (values: AddExpenseFormValues) => {
     try {
@@ -86,21 +96,21 @@ export function AddExpenseForm({ budgetId, currencies, assets }: AddExpenseFormP
         date: parseLocalDate(values.date).getTime(),
         description: values.description || undefined,
         category: values.category || undefined,
-      })
+      });
       form.reset({
         amount: "",
         currencyCode: selectedCurrency,
         date: format(new Date(), "yyyy-MM-dd"),
         category: "",
         description: "",
-      })
+      });
     } catch (err) {
-      console.error("Failed to add expense:", err)
+      console.error("Failed to add expense:", err);
       form.setError("root", {
         message: err instanceof Error ? err.message : "Failed to add expense",
-      })
+      });
     }
-  }
+  };
 
   return (
     <Form {...form}>
@@ -110,7 +120,7 @@ export function AddExpenseForm({ budgetId, currencies, assets }: AddExpenseFormP
             {form.formState.errors.root.message}
           </div>
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="amount"
@@ -144,24 +154,30 @@ export function AddExpenseForm({ budgetId, currencies, assets }: AddExpenseFormP
                   </FormControl>
                   <SelectContent>
                     {currencies.map((c) => {
-                      const asset = assets.find((a) => a.currencyCode === c.currencyCode)
+                      const asset = assets.find(
+                        (a) => a.currencyCode === c.currencyCode,
+                      );
                       return (
                         <SelectItem key={c.currencyCode} value={c.currencyCode}>
-                          {c.currencyCode} ({formatCurrency(asset?.amount ?? 0, c.currencyCode)})
+                          {c.currencyCode} (
+                          {formatCurrency(asset?.amount ?? 0, c.currencyCode)})
                         </SelectItem>
-                      )
+                      );
                     })}
                   </SelectContent>
                 </Select>
-                <FormDescription className={availableBalance > 0 ? "" : "text-destructive"}>
-                  Available: {formatCurrency(availableBalance, selectedCurrency)}
+                <FormDescription
+                  className={availableBalance > 0 ? "" : "text-destructive"}
+                >
+                  Available:{" "}
+                  {formatCurrency(availableBalance, selectedCurrency)}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="date"
@@ -213,10 +229,14 @@ export function AddExpenseForm({ budgetId, currencies, assets }: AddExpenseFormP
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || currencies.length === 0}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={form.formState.isSubmitting || currencies.length === 0}
+        >
           {form.formState.isSubmitting ? "Adding..." : "Add Expense"}
         </Button>
       </form>
     </Form>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { PropsWithChildren, useState } from "react"
 import { Copy } from "lucide-react"
 import { useMutation } from "convex/react"
 import { useNavigate } from "@tanstack/react-router"
@@ -38,7 +38,7 @@ interface DuplicateBudgetDialogProps {
   budgetId: Id<"budgets">
 }
 
-export function DuplicateBudgetDialog({ budgetId }: DuplicateBudgetDialogProps) {
+export function DuplicateBudgetDialog({ budgetId,children }: PropsWithChildren<DuplicateBudgetDialogProps>) {
   const [open, setOpen] = useState(false)
   const duplicateBudgetMutation = useMutation(api.budgets.duplicate)
   const navigate = useNavigate()
@@ -76,10 +76,12 @@ export function DuplicateBudgetDialog({ budgetId }: DuplicateBudgetDialogProps) 
       if (!isOpen) form.reset()
     }}>
       <DialogTrigger asChild>
+        {children??
         <Button variant="outline" size="sm">
           <Copy className="mr-2 h-4 w-4" />
           Duplicate
         </Button>
+        }
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

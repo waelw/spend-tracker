@@ -1,20 +1,20 @@
-import { useEffect } from "react"
-import { format } from "date-fns"
-import { useMutation } from "convex/react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { api } from "../../../convex/_generated/api"
-import type { Id } from "../../../convex/_generated/dataModel"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useEffect } from "react";
+import { format } from "date-fns";
+import { useMutation } from "convex/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -22,33 +22,36 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { parseLocalDate } from "@/lib/date-utils"
+} from "@/components/ui/form";
+import { parseLocalDate } from "@/lib/date-utils";
 
-const today = format(new Date(), "yyyy-MM-dd")
+const today = format(new Date(), "yyyy-MM-dd");
 
 const addIncomeSchema = z.object({
-  amount: z.string().min(1, "Amount is required").refine(
-    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
-    "Amount must be a positive number"
-  ),
+  amount: z
+    .string()
+    .min(1, "Amount is required")
+    .refine(
+      (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+      "Amount must be a positive number",
+    ),
   currencyCode: z.string().min(1, "Currency is required"),
-  date: z.string().min(1, "Date is required").refine(
-    (val) => val <= today,
-    "Cannot add income for future dates"
-  ),
+  date: z
+    .string()
+    .min(1, "Date is required")
+    .refine((val) => val <= today, "Cannot add income for future dates"),
   description: z.string().optional(),
-})
+});
 
-type AddIncomeFormValues = z.infer<typeof addIncomeSchema>
+type AddIncomeFormValues = z.infer<typeof addIncomeSchema>;
 
 interface AddIncomeFormProps {
-  budgetId: Id<"budgets">
-  currencies: { currencyCode: string }[]
+  budgetId: Id<"budgets">;
+  currencies: { currencyCode: string }[];
 }
 
 export function AddIncomeForm({ budgetId, currencies }: AddIncomeFormProps) {
-  const addIncomeMutation = useMutation(api.income.add)
+  const addIncomeMutation = useMutation(api.income.add);
 
   const form = useForm<AddIncomeFormValues>({
     resolver: zodResolver(addIncomeSchema),
@@ -58,16 +61,19 @@ export function AddIncomeForm({ budgetId, currencies }: AddIncomeFormProps) {
       date: format(new Date(), "yyyy-MM-dd"),
       description: "",
     },
-  })
+  });
 
-  const selectedCurrency = form.watch("currencyCode")
+  const selectedCurrency = form.watch("currencyCode");
 
   // Update currency when currencies list changes
   useEffect(() => {
-    if (currencies.length > 0 && !currencies.find((c) => c.currencyCode === selectedCurrency)) {
-      form.setValue("currencyCode", currencies[0].currencyCode)
+    if (
+      currencies.length > 0 &&
+      !currencies.find((c) => c.currencyCode === selectedCurrency)
+    ) {
+      form.setValue("currencyCode", currencies[0].currencyCode);
     }
-  }, [currencies, selectedCurrency, form])
+  }, [currencies, selectedCurrency, form]);
 
   const onSubmit = async (values: AddIncomeFormValues) => {
     try {
@@ -77,20 +83,20 @@ export function AddIncomeForm({ budgetId, currencies }: AddIncomeFormProps) {
         currencyCode: values.currencyCode,
         date: parseLocalDate(values.date).getTime(),
         description: values.description || undefined,
-      })
+      });
       form.reset({
         amount: "",
         currencyCode: selectedCurrency,
         date: format(new Date(), "yyyy-MM-dd"),
         description: "",
-      })
+      });
     } catch (err) {
-      console.error("Failed to add income:", err)
+      console.error("Failed to add income:", err);
       form.setError("root", {
         message: err instanceof Error ? err.message : "Failed to add income",
-      })
+      });
     }
-  }
+  };
 
   return (
     <Form {...form}>
@@ -100,7 +106,7 @@ export function AddIncomeForm({ budgetId, currencies }: AddIncomeFormProps) {
             {form.formState.errors.root.message}
           </div>
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="amount"
@@ -171,10 +177,14 @@ export function AddIncomeForm({ budgetId, currencies }: AddIncomeFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={form.formState.isSubmitting || currencies.length === 0}>
+        <Button
+          type="submit"
+          className="w-full bg-green-600 hover:bg-green-700"
+          disabled={form.formState.isSubmitting || currencies.length === 0}
+        >
           {form.formState.isSubmitting ? "Adding..." : "Add Income"}
         </Button>
       </form>
     </Form>
-  )
+  );
 }

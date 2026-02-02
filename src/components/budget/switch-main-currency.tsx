@@ -1,21 +1,21 @@
-import { useState } from "react"
-import { useMutation } from "convex/react"
-import { api } from "../../../convex/_generated/api"
-import type { Id } from "../../../convex/_generated/dataModel"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 interface SwitchMainCurrencyFormProps {
-  budgetId: Id<"budgets">
-  currencies: { currencyCode: string }[]
-  currentMainCurrency: string
+  budgetId: Id<"budgets">;
+  currencies: { currencyCode: string }[];
+  currentMainCurrency: string;
 }
 
 export function SwitchMainCurrencyForm({
@@ -23,30 +23,34 @@ export function SwitchMainCurrencyForm({
   currencies,
   currentMainCurrency,
 }: SwitchMainCurrencyFormProps) {
-  const [selectedCurrency, setSelectedCurrency] = useState(currentMainCurrency)
-  const [isSwitching, setIsSwitching] = useState(false)
+  const [selectedCurrency, setSelectedCurrency] = useState(currentMainCurrency);
+  const [isSwitching, setIsSwitching] = useState(false);
 
-  const switchMainCurrencyMutation = useMutation(api.budgets.switchMainCurrency)
+  const switchMainCurrencyMutation = useMutation(
+    api.budgets.switchMainCurrency,
+  );
 
   const handleSwitch = async () => {
-    if (selectedCurrency === currentMainCurrency) return
+    if (selectedCurrency === currentMainCurrency) return;
 
-    setIsSwitching(true)
+    setIsSwitching(true);
     try {
       await switchMainCurrencyMutation({
         id: budgetId,
         newMainCurrency: selectedCurrency,
-      })
+      });
     } catch (error) {
-      console.error("Failed to switch main currency:", error)
+      console.error("Failed to switch main currency:", error);
     } finally {
-      setIsSwitching(false)
+      setIsSwitching(false);
     }
-  }
+  };
 
-  const otherCurrencies = currencies.filter(c => c.currencyCode !== currentMainCurrency)
+  const otherCurrencies = currencies.filter(
+    (c) => c.currencyCode !== currentMainCurrency,
+  );
 
-  if (otherCurrencies.length === 0) return null
+  if (otherCurrencies.length === 0) return null;
 
   return (
     <div className="pt-4 border-t">
@@ -54,7 +58,7 @@ export function SwitchMainCurrencyForm({
       <p className="text-xs text-muted-foreground mb-2">
         Change the primary currency. All amounts will be converted.
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-col md:flex-row gap-2">
         <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
           <SelectTrigger className="flex-1">
             <SelectValue />
@@ -62,7 +66,8 @@ export function SwitchMainCurrencyForm({
           <SelectContent>
             {currencies.map((c) => (
               <SelectItem key={c.currencyCode} value={c.currencyCode}>
-                {c.currencyCode} {c.currencyCode === currentMainCurrency && "(current)"}
+                {c.currencyCode}{" "}
+                {c.currencyCode === currentMainCurrency && "(current)"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -76,5 +81,5 @@ export function SwitchMainCurrencyForm({
         </Button>
       </div>
     </div>
-  )
+  );
 }
