@@ -142,44 +142,102 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
         <ThemeProvider defaultTheme="system" storageKey="spend-tracker-theme">
-          <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="max-w-7xl mx-auto flex h-14 items-center px-4 sm:px-6 lg:px-8">
+          <div className="min-h-screen flex flex-col">
+            <header className="sticky top-0 z-50 w-full glass">
+              <div className="max-w-7xl mx-auto flex h-16 items-center px-4 sm:px-6 lg:px-8">
                 <div className="md:mr-4 mr-2 flex">
-                  <Link to="/" className="md:mr-6 mr-2 flex items-center space-x-2">
-                    <span className="font-bold text-xs md:text-base">Spend Tracker</span>
+                  <Link to="/" className="md:mr-6 mr-2 flex items-center space-x-2 group">
+                    <span className="font-bold text-lg md:text-xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary group-hover:from-accent group-hover:to-primary transition-all duration-300">
+                      Spend Tracker
+                    </span>
                   </Link>
-                  <nav className="flex items-center space-x-2 md:space-x-6 text-sm font-medium">
+                  <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                     <SignedIn>
                       <Link
                         to="/"
-                        className="transition-colors text-xs md:text-base hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
+                        className="transition-colors hover:text-primary text-muted-foreground [&.active]:text-primary [&.active]:font-semibold"
                       >
                         Dashboard
                       </Link>
                       <Link
                         to="/budgets/new"
-                        className="transition-colors text-xs md:text-base hover:text-foreground/80 text-foreground/60 [&.active]:text-foreground"
+                        className="transition-colors hover:text-primary text-muted-foreground [&.active]:text-primary [&.active]:font-semibold"
                       >
                         New Budget
                       </Link>
                     </SignedIn>
                   </nav>
                 </div>
-                <div className="flex flex-1 items-center justify-end space-x-2">
+                <div className="flex flex-1 items-center justify-end space-x-4">
                   <ThemeToggle />
                   <SignedIn>
                     <UserButton afterSignOutUrl="/" />
                   </SignedIn>
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <Button size="sm" variant="outline">Sign In</Button>
+                      <Button size="sm" className="rounded-full px-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity">
+                        Sign In
+                      </Button>
                     </SignInButton>
                   </SignedOut>
                 </div>
               </div>
             </header>
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
+            
+            <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 mb-20 md:mb-0">
+              {children}
+            </main>
+
+            {/* Mobile Bottom Navigation */}
+            <SignedIn>
+              <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t pb-[env(safe-area-inset-bottom)]">
+                <nav className="flex items-center justify-around h-16 px-2">
+                  <Link
+                    to="/"
+                    className="flex flex-col items-center justify-center space-y-1 w-full h-full text-muted-foreground [&.active]:text-primary"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect width="7" height="9" x="3" y="3" rx="1" />
+                      <rect width="7" height="5" x="14" y="3" rx="1" />
+                      <rect width="7" height="9" x="14" y="12" rx="1" />
+                      <rect width="7" height="5" x="3" y="16" rx="1" />
+                    </svg>
+                    <span className="text-[10px] font-medium">Dashboard</span>
+                  </Link>
+                  <Link
+                    to="/budgets/new"
+                    className="flex flex-col items-center justify-center space-y-1 w-full h-full text-muted-foreground [&.active]:text-primary"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M8 12h8" />
+                      <path d="M12 8v8" />
+                    </svg>
+                    <span className="text-[10px] font-medium">New Budget</span>
+                  </Link>
+                </nav>
+              </div>
+            </SignedIn>
           </div>
           <TanStackDevtools
             config={{
